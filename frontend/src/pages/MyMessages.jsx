@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../utils/axios';
 
 const MyMessages = () => {
@@ -15,7 +16,7 @@ const MyMessages = () => {
       setTotalPages(res.pagination.pages);
       setPage(res.pagination.page);
     } catch (err) {
-      alert('获取消息失败');
+      alert('Failed to fetch messages');
     } finally {
       setLoading(false);
     }
@@ -28,7 +29,7 @@ const MyMessages = () => {
       await api.post('/api/notifications/mark-read', { notificationId });
       fetchNotifications(page);
     } catch (err) {
-      alert('操作失败');
+      alert('Operation failed');
     }
   };
 
@@ -37,16 +38,19 @@ const MyMessages = () => {
       await api.post('/api/notifications/mark-read', { all: true });
       fetchNotifications(page);
     } catch (err) {
-      alert('操作失败');
+      alert('Operation failed');
     }
   };
 
   return (
     <div style={{ width: '800px', margin: '20px auto' }}>
-      <h2>我的消息</h2>
-      <button onClick={markAllRead} style={{ marginBottom: '15px', padding: '5px 10px' }}>全部标为已读</button>
-      {loading && <p>加载中...</p>}
-      {!loading && notifications.length === 0 && <p>暂无消息</p>}
+      <div style={{ marginBottom: '20px' }}>
+        <Link to="/" style={{ color: '#ff6700', textDecoration: 'none' }}>← Back to Home</Link>
+      </div>
+      <h2>My Messages</h2>
+      <button onClick={markAllRead} style={{ marginBottom: '15px', padding: '5px 10px' }}>Mark All as Read</button>
+      {loading && <p>Loading...</p>}
+      {!loading && notifications.length === 0 && <p>No messages</p>}
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {notifications.map(n => (
           <li key={n.id} style={{
@@ -60,7 +64,7 @@ const MyMessages = () => {
                 <small>{new Date(n.createdAt).toLocaleString()}</small>
               </div>
               {!n.isRead && (
-                <button onClick={() => markAsRead(n.id)} style={{ fontSize: '12px' }}>标为已读</button>
+                <button onClick={() => markAsRead(n.id)} style={{ fontSize: '12px' }}>Mark as Read</button>
               )}
             </div>
           </li>
@@ -68,9 +72,9 @@ const MyMessages = () => {
       </ul>
       {totalPages > 1 && (
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '20px' }}>
-          <button disabled={page === 1} onClick={() => fetchNotifications(page - 1)}>上一页</button>
-          <span>第 {page} / {totalPages} 页</span>
-          <button disabled={page === totalPages} onClick={() => fetchNotifications(page + 1)}>下一页</button>
+          <button disabled={page === 1} onClick={() => fetchNotifications(page - 1)}>Previous</button>
+          <span>Page {page} / {totalPages}</span>
+          <button disabled={page === totalPages} onClick={() => fetchNotifications(page + 1)}>Next</button>
         </div>
       )}
     </div>

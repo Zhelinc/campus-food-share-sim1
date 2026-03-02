@@ -28,6 +28,7 @@ const Home = () => {
   });
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
+  const fileInputRef = useRef(null); // 用于文件上传的自定义按钮
 
   // 用户菜单状态
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -51,7 +52,7 @@ const Home = () => {
           localStorage.removeItem('token');
           window.location.href = '/login';
         } else {
-          alert('加载数据失败：' + (err.response?.data?.message || err.message));
+          alert('Failed to load data: ' + (err.response?.data?.message || err.message));
         }
       }
     };
@@ -64,7 +65,7 @@ const Home = () => {
       try {
         const res = await api.get('/api/notifications/unread-count');
         setUnreadCount(res.unreadCount);
-      } catch (err) { /* 忽略 */ }
+      } catch (err) { /* ignore */ }
     };
     fetchUnreadCount();
     const interval = setInterval(fetchUnreadCount, 30000);
@@ -88,18 +89,18 @@ const Home = () => {
       });
       setFoodList(foodRes.foods || []);
     } catch (err) {
-      alert('获取食物列表失败：' + (err.response?.data?.message || err.message));
+      alert('Failed to fetch food list: ' + (err.response?.data?.message || err.message));
     }
   };
 
   const handleClaim = async (foodId) => {
-    if (window.confirm('确定要认领这份食物吗？')) {
+    if (window.confirm('Are you sure you want to claim this food?')) {
       try {
         await claimFood(foodId);
-        alert('认领成功！等待发布者确认');
+        alert('Claimed successfully! Waiting for the publisher to confirm.');
         handleSearch();
       } catch (err) {
-        alert('认领失败：' + (err.response?.data?.message || err.message));
+        alert('Claim failed: ' + (err.response?.data?.message || err.message));
       }
     }
   };
@@ -120,22 +121,22 @@ const Home = () => {
     if (!currentEditFood) return;
     try {
       await updateFood(currentEditFood.id, editFoodData);
-      alert('修改成功！');
+      alert('Updated successfully!');
       setShowEditModal(false);
       handleSearch();
     } catch (err) {
-      alert('修改失败：' + (err.response?.data?.message || err.message));
+      alert('Update failed: ' + (err.response?.data?.message || err.message));
     }
   };
 
   const handleDelete = async (foodId) => {
-    if (window.confirm('确定要删除这条发布吗？')) {
+    if (window.confirm('Are you sure you want to delete this post?')) {
       try {
         await deleteFood(foodId);
-        alert('删除成功！');
+        alert('Deleted successfully!');
         handleSearch();
       } catch (err) {
-        alert('删除失败：' + (err.response?.data?.message || err.message));
+        alert('Delete failed: ' + (err.response?.data?.message || err.message));
       }
     }
   };
@@ -159,12 +160,12 @@ const Home = () => {
       const data = await res.json();
       if (res.ok) {
         setPublishFoodData({ ...publishFoodData, imageUrl: data.url });
-        alert('图片上传成功');
+        alert('Image uploaded successfully');
       } else {
-        alert('上传失败：' + data.message);
+        alert('Upload failed: ' + data.message);
       }
     } catch (err) {
-      alert('上传失败：' + err.message);
+      alert('Upload failed: ' + err.message);
     } finally {
       setUploading(false);
     }
@@ -174,86 +175,92 @@ const Home = () => {
   const filteredFoods = foodList.filter(food => {
     return (
       (filters.campus ? food.campus === filters.campus : true) &&
-      (filters.category ? food.category === filters.category : true) &&
+      (filters.category ? food.category?.trim() === filters.category.trim() : true) &&
       (filters.keyword ? food.title?.includes(filters.keyword) : true)
     );
   });
 
   return (
     <div style={{ width: '1200px', margin: '0 auto', fontFamily: 'Arial' }}>
-      {/* 顶部栏 */}
+      {/* Top bar */}
       <div style={{
         backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        padding: '10px 20px', display: 'flex', justifyContent: 'flex-end', gap: '30px', marginBottom: '20px'
+        padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'
       }}>
-        <span style={{ color: '#ff6700', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => setShowPublishModal(true)}>发布食物</span>
-        <Link to="/my-publish" style={{ color: '#666', textDecoration: 'none' }}>我的发布</Link>
-        <Link to="/my-claim" style={{ color: '#666', textDecoration: 'none' }}>我的认领</Link>
-        {user?.role === 'admin' && <Link to="/admin" style={{ color: '#ff6700', textDecoration: 'none' }}>管理后台</Link>}
-
-        {/* 用户头像下拉菜单 */}
-        <div style={{ position: 'relative' }} ref={menuRef}>
-          <div
-            style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-            onClick={() => setShowUserMenu(!showUserMenu)}
-          >
-            <span style={{ color: '#ff6700', marginRight: '5px' }}>{user?.email}</span>
-            <div style={{ position: 'relative' }}>
-              <span style={{ fontSize: '20px' }}>👤</span>
-              {unreadCount > 0 && (
-                <span style={{
-                  position: 'absolute', top: '-5px', right: '-5px', backgroundColor: 'red', color: 'white',
-                  borderRadius: '50%', padding: '2px 6px', fontSize: '12px', minWidth: '16px', textAlign: 'center'
-                }}>
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </div>
-          </div>
-          {showUserMenu && (
-            <div style={{
-              position: 'absolute', top: '30px', right: '0', backgroundColor: 'white',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.1)', borderRadius: '4px', width: '150px', zIndex: 1000
-            }}>
-              <Link to="/my-account" style={{ display: 'block', padding: '10px', borderBottom: '1px solid #eee', textDecoration: 'none', color: '#333' }}
-                onClick={() => setShowUserMenu(false)}>我的账号</Link>
-              <Link to="/my-messages" style={{ display: 'block', padding: '10px', textDecoration: 'none', color: '#333', position: 'relative' }}
-                onClick={() => setShowUserMenu(false)}>
-                我的消息
-                {unreadCount > 0 && <span style={{ marginLeft: '5px', backgroundColor: 'red', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '12px' }}>{unreadCount}</span>}
-              </Link>
-            </div>
-          )}
+        {/* Left navigation */}
+        <div style={{ display: 'flex', gap: '20px' }}>
+          <Link to="/" style={{ color: '#ff6700', textDecoration: 'none' }}>Home</Link>
+          <span style={{ color: '#ff6700', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => setShowPublishModal(true)}>Publish Food</span>
+          <Link to="/my-publish" style={{ color: '#666', textDecoration: 'none' }}>My Publications</Link>
+          <Link to="/my-claim" style={{ color: '#666', textDecoration: 'none' }}>My Claims</Link>
+          {user?.role === 'admin' && <Link to="/admin" style={{ color: '#ff6700', textDecoration: 'none' }}>Admin Panel</Link>}
         </div>
 
-        <span style={{ cursor: 'pointer', color: '#f44336' }} onClick={() => { localStorage.removeItem('token'); window.location.href = '/login'; }}>退出登录</span>
+        {/* Right user info */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ position: 'relative' }} ref={menuRef}>
+            <div
+              style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+              onClick={() => setShowUserMenu(!showUserMenu)}
+            >
+              <span style={{ color: '#ff6700', marginRight: '5px' }}>{user?.email}</span>
+              <div style={{ position: 'relative' }}>
+                <span style={{ fontSize: '20px' }}>👤</span>
+                {unreadCount > 0 && (
+                  <span style={{
+                    position: 'absolute', top: '-5px', right: '-5px', backgroundColor: 'red', color: 'white',
+                    borderRadius: '50%', padding: '2px 6px', fontSize: '12px', minWidth: '16px', textAlign: 'center'
+                  }}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </div>
+            </div>
+            {showUserMenu && (
+              <div style={{
+                position: 'absolute', top: '30px', right: '0', backgroundColor: 'white',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.1)', borderRadius: '4px', width: '150px', zIndex: 1000
+              }}>
+                <Link to="/my-account" style={{ display: 'block', padding: '10px', borderBottom: '1px solid #eee', textDecoration: 'none', color: '#333' }}
+                  onClick={() => setShowUserMenu(false)}>My Account</Link>
+                <Link to="/my-messages" style={{ display: 'block', padding: '10px', textDecoration: 'none', color: '#333', position: 'relative' }}
+                  onClick={() => setShowUserMenu(false)}>
+                  My Messages
+                  {unreadCount > 0 && <span style={{ marginLeft: '5px', backgroundColor: 'red', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '12px' }}>{unreadCount}</span>}
+                </Link>
+              </div>
+            )}
+          </div>
+
+          <span style={{ cursor: 'pointer', color: '#f44336' }} onClick={() => { localStorage.removeItem('token'); window.location.href = '/login'; }}>Logout</span>
+        </div>
       </div>
 
-      {/* 搜索框 */}
+      {/* Search box */}
       <div style={{ backgroundColor: '#fff8f0', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <input type="text" placeholder="搜索食物（如：红烧肉）" value={filters.keyword}
+          <input type="text" placeholder="Search food (e.g., Braised Pork)" value={filters.keyword}
             onChange={(e) => setFilters({ ...filters, keyword: e.target.value })} style={{ flex: 1, padding: '10px 15px', border: '1px solid #ff6700', borderRadius: '4px 0 0 4px', outline: 'none' }} />
-          <button onClick={handleSearch} style={{ backgroundColor: '#ff6700', color: 'white', border: 'none', padding: '0 20px', borderRadius: '0 4px 4px 0', cursor: 'pointer' }}>搜索</button>
+          <button onClick={handleSearch} style={{ backgroundColor: '#ff6700', color: 'white', border: 'none', padding: '0 20px', borderRadius: '0 4px 4px 0', cursor: 'pointer' }}>Search</button>
         </div>
       </div>
 
-      {/* 左侧筛选 + 中间列表 */}
+      {/* Left filters + middle list */}
       <div style={{ display: 'flex', gap: '20px' }}>
-        {/* 左侧筛选栏 */}
+        {/* Left filter bar */}
         <div style={{ width: '200px', backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', borderRadius: '8px', padding: '15px' }}>
-          <h3 style={{ margin: '0 0 15px 0', fontSize: '16px' }}>校区</h3>
+          <h3 style={{ margin: '0 0 15px 0', fontSize: '16px' }}>Campus</h3>
           <select value={filters.campus} onChange={(e) => setFilters({ ...filters, campus: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}>
-            <option value="">全部校区</option>
-            <option value="伦敦">伦敦</option>
-            <option value="海淀">海淀</option>
-            <option value="沙河">沙河</option>
-            <option value="海南">海南</option>
+            <option value="">All Campuses</option>
+            <option value="London">London</option>
+            <option value="Haidian">Haidian</option>
+            <option value="Shahe">Shahe</option>
+            <option value="Hainan">Hainan</option>
           </select>
 
-          <h3 style={{ margin: '20px 0 15px 0', fontSize: '16px' }}>食物类别</h3>
+          <h3 style={{ margin: '20px 0 15px 0', fontSize: '16px' }}>Category</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {['主食', '零食', '水果'].map(cat => (
+            {['Main Dish', 'Snack', 'Fruit'].map(cat => (
               <div key={cat} onClick={() => setFilters({ ...filters, category: cat })} style={{
                 padding: '8px 10px', cursor: 'pointer', borderRadius: '4px',
                 backgroundColor: filters.category === cat ? '#fff8f0' : 'white'
@@ -262,34 +269,34 @@ const Home = () => {
           </div>
         </div>
 
-        {/* 中间食物列表 */}
+        {/* Middle food list */}
         <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
           {filteredFoods.length === 0 ? (
-            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '50px', color: '#999' }}>暂无食物数据，快去发布吧～</div>
+            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '50px', color: '#999' }}>No food available, go publish some!</div>
           ) : (
             filteredFoods.map(food => (
               <div key={food.id} style={{ backgroundColor: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', borderRadius: '8px', overflow: 'hidden' }}>
-                <img src={food.imageUrl || 'https://via.placeholder.com/300x200?text=食物图片'} alt={food.title} style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
+                <img src={food.imageUrl || '/images/blind-box.png'} alt={food.title} style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
                 <div style={{ padding: '15px' }}>
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '18px' }}>{food.title}</h4>
-                  <p style={{ margin: '5px 0', fontSize: '14px' }}>校区：{food.campus}</p>
-                  <p style={{ margin: '5px 0', fontSize: '14px' }}>分享地址：{food.location}</p>
-                  <p style={{ margin: '5px 0', fontSize: '14px' }}>类别：{food.category}</p>
-                  <p style={{ margin: '5px 0', fontSize: '14px' }}>质量：{food.quality}</p>
+                  <p style={{ margin: '5px 0', fontSize: '14px' }}>Campus: {food.campus}</p>
+                  <p style={{ margin: '5px 0', fontSize: '14px' }}>Location: {food.location}</p>
+                  <p style={{ margin: '5px 0', fontSize: '14px' }}>Category: {food.category}</p>
+                  <p style={{ margin: '5px 0', fontSize: '14px' }}>Quality: {food.quality}</p>
                   <p style={{ margin: '5px 0', fontSize: '14px', color: food.status === 'AVAILABLE' ? '#4caf50' : '#f44336' }}>
-                    状态：{food.status === 'AVAILABLE' ? '可认领' : '已认领'}
+                    Status: {food.status === 'AVAILABLE' ? 'Available' : 'Claimed'}
                   </p>
                   {food.publisherId === user?.id ? (
                     <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                      <button onClick={() => openEditModal(food)} style={{ flex: 1, padding: '10px', backgroundColor: '#4299e1', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>修改</button>
-                      <button onClick={() => handleDelete(food.id)} style={{ flex: 1, padding: '10px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>删除</button>
+                      <button onClick={() => openEditModal(food)} style={{ flex: 1, padding: '10px', backgroundColor: '#4299e1', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Edit</button>
+                      <button onClick={() => handleDelete(food.id)} style={{ flex: 1, padding: '10px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Delete</button>
                     </div>
                   ) : (
                     <button disabled={food.status !== 'AVAILABLE'} onClick={() => handleClaim(food.id)} style={{
                       width: '100%', marginTop: '15px', padding: '10px', backgroundColor: '#ff6700', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer',
                       opacity: food.status !== 'AVAILABLE' ? 0.6 : 1
                     }}>
-                      {food.status === 'AVAILABLE' ? '立即认领' : '已被认领'}
+                      {food.status === 'AVAILABLE' ? 'Claim Now' : 'Already Claimed'}
                     </button>
                   )}
                 </div>
@@ -299,102 +306,134 @@ const Home = () => {
         </div>
       </div>
 
-      {/* 修改食物弹窗 */}
+      {/* Edit Modal */}
       {showEditModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
         }}>
           <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '500px' }}>
-            <h3 style={{ margin: '0 0 20px 0' }}>修改食物信息</h3>
+            <h3 style={{ margin: '0 0 20px 0' }}>Edit Food</h3>
             <div style={{ marginBottom: '15px' }}>
-              <label>标题：</label>
+              <label>Title:</label>
               <input type="text" value={editFoodData.title} onChange={e => setEditFoodData({ ...editFoodData, title: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label>描述：</label>
+              <label>Description:</label>
               <textarea value={editFoodData.description} onChange={e => setEditFoodData({ ...editFoodData, description: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', minHeight: '80px' }} />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label>校区：</label>
+              <label>Campus:</label>
               <input type="text" value={editFoodData.campus} onChange={e => setEditFoodData({ ...editFoodData, campus: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label>分享地址：</label>
+              <label>Location:</label>
               <input type="text" value={editFoodData.location} onChange={e => setEditFoodData({ ...editFoodData, location: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label>质量：</label>
+              <label>Quality:</label>
               <input type="text" value={editFoodData.quality} onChange={e => setEditFoodData({ ...editFoodData, quality: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label>类别：</label>
+              <label>Category:</label>
               <input type="text" value={editFoodData.category} onChange={e => setEditFoodData({ ...editFoodData, category: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} />
             </div>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowEditModal(false)} style={{ padding: '8px 16px', backgroundColor: '#ddd', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>取消</button>
-              <button onClick={submitEdit} style={{ padding: '8px 16px', backgroundColor: '#4299e1', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>保存修改</button>
+              <button onClick={() => setShowEditModal(false)} style={{ padding: '8px 16px', backgroundColor: '#ddd', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={submitEdit} style={{ padding: '8px 16px', backgroundColor: '#4299e1', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Save</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 发布食物弹窗 */}
+      {/* Publish Modal */}
       {showPublishModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h3 style={{ margin: '0 0 20px 0' }}>发布新食物</h3>
+            <h3 style={{ margin: '0 0 20px 0' }}>Publish New Food</h3>
             <div style={{ marginBottom: '15px' }}>
-              <label>标题 *</label>
-              <input type="text" value={publishFoodData.title} onChange={e => setPublishFoodData({ ...publishFoodData, title: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} placeholder="例如：红烧肉" />
+              <label>Title *</label>
+              <input type="text" value={publishFoodData.title} onChange={e => setPublishFoodData({ ...publishFoodData, title: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} placeholder="e.g., Braised Pork" />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label>描述</label>
-              <textarea value={publishFoodData.description} onChange={e => setPublishFoodData({ ...publishFoodData, description: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', minHeight: '80px' }} placeholder="食物的详细描述..." />
+              <label>Description</label>
+              <textarea value={publishFoodData.description} onChange={e => setPublishFoodData({ ...publishFoodData, description: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', minHeight: '80px' }} placeholder="Detailed description..." />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label>校区 *</label>
+              <label>Campus *</label>
               <select value={publishFoodData.campus} onChange={e => setPublishFoodData({ ...publishFoodData, campus: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} required>
-                <option value="">请选择校区</option>
-                <option value="伦敦">伦敦</option>
-                <option value="海淀">海淀</option>
-                <option value="沙河">沙河</option>
-                <option value="海南">海南</option>
+                <option value="">Select Campus</option>
+                <option value="London">London</option>
+                <option value="Haidian">Haidian</option>
+                <option value="Shahe">Shahe</option>
+                <option value="Hainan">Hainan</option>
               </select>
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label>分享地址 *</label>
-              <input type="text" value={publishFoodData.location} onChange={e => setPublishFoodData({ ...publishFoodData, location: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} placeholder="例如：第一食堂二楼" />
+              <label>Location *</label>
+              <input type="text" value={publishFoodData.location} onChange={e => setPublishFoodData({ ...publishFoodData, location: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} placeholder="e.g., 2nd Floor, Canteen 1" />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label>质量 *</label>
+              <label>Quality *</label>
               <select value={publishFoodData.quality} onChange={e => setPublishFoodData({ ...publishFoodData, quality: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}>
-                <option value="">请选择</option>
-                <option value="新鲜">新鲜</option>
-                <option value="临期">临期</option>
-                <option value="已开封">已开封</option>
+                <option value="">Select</option>
+                <option value="Fresh">Fresh</option>
+                <option value="Near Expiry">Near Expiry</option>
+                <option value="Opened">Opened</option>
               </select>
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label>类别</label>
-              <input type="text" value={publishFoodData.category} onChange={e => setPublishFoodData({ ...publishFoodData, category: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} placeholder="例如：主食、零食" />
+              <label>Category</label>
+              <input type="text" value={publishFoodData.category} onChange={e => setPublishFoodData({ ...publishFoodData, category: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} placeholder="e.g., Main Dish, Snack" />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label>过敏原（逗号分隔）</label>
-              <input type="text" value={publishFoodData.allergens} onChange={e => setPublishFoodData({ ...publishFoodData, allergens: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} placeholder="例如：花生, 海鲜" />
+              <label>Allergens (comma separated)</label>
+              <input type="text" value={publishFoodData.allergens} onChange={e => setPublishFoodData({ ...publishFoodData, allergens: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} placeholder="e.g., peanuts, seafood" />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label>食物图片</label>
-              <input type="file" accept="image/*" onChange={handleFileSelect} disabled={uploading} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} />
-              {uploading && <p style={{ color: '#ff6700' }}>上传中...</p>}
-              {previewUrl && <div><img src={previewUrl} alt="预览" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px', marginTop: '10px' }} /></div>}
-              {publishFoodData.imageUrl && !previewUrl && <div><img src={publishFoodData.imageUrl} alt="已上传" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px', marginTop: '10px' }} /></div>}
+              <label>Food Image</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  disabled={uploading}
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current.click()}
+                  disabled={uploading}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#f0f0f0',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Choose File
+                </button>
+                <span>{publishFoodData.imageUrl ? 'File selected' : 'No file chosen'}</span>
+              </div>
+              {uploading && <p style={{ color: '#ff6700' }}>Uploading...</p>}
+              {previewUrl && (
+                <div>
+                  <img src={previewUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px', marginTop: '10px' }} />
+                </div>
+              )}
+              {publishFoodData.imageUrl && !previewUrl && (
+                <div>
+                  <img src={publishFoodData.imageUrl} alt="Uploaded" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px', marginTop: '10px' }} />
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button onClick={() => { setShowPublishModal(false); setPublishFoodData({ title: '', description: '', campus: '', location: '', quality: '', category: '', allergens: '', imageUrl: '' }); setPreviewUrl(''); }} style={{ padding: '8px 16px', backgroundColor: '#ddd', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>取消</button>
+              <button onClick={() => { setShowPublishModal(false); setPublishFoodData({ title: '', description: '', campus: '', location: '', quality: '', category: '', allergens: '', imageUrl: '' }); setPreviewUrl(''); }} style={{ padding: '8px 16px', backgroundColor: '#ddd', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
               <button onClick={async () => {
                 if (!publishFoodData.title || !publishFoodData.campus || !publishFoodData.location || !publishFoodData.quality) {
-                  alert('请填写标题、校区、分享地址和质量');
+                  alert('Please fill in title, campus, location and quality');
                   return;
                 }
                 try {
@@ -403,16 +442,16 @@ const Home = () => {
                     allergens: publishFoodData.allergens ? publishFoodData.allergens.split(',').map(s => s.trim()) : []
                   };
                   await publishFood(submitData);
-                  alert('发布成功！');
+                  alert('Published successfully!');
                   setShowPublishModal(false);
                   handleSearch();
                   setPublishFoodData({ title: '', description: '', campus: '', location: '', quality: '', category: '', allergens: '', imageUrl: '' });
                   setPreviewUrl('');
                 } catch (err) {
-                  alert('发布失败：' + (err.response?.data?.message || err.message));
+                  alert('Publish failed: ' + (err.response?.data?.message || err.message));
                 }
               }} disabled={uploading} style={{ padding: '8px 16px', backgroundColor: '#ff6700', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', opacity: uploading ? 0.6 : 1 }}>
-                {uploading ? '上传中...' : '发布'}
+                {uploading ? 'Uploading...' : 'Publish'}
               </button>
             </div>
           </div>

@@ -6,7 +6,7 @@ export const verifyAdmin = async (req: Request, res: Response, next: NextFunctio
     const user = req.user;
     if (!user) {
       return res.status(401).json({
-        message: '未登录',
+        message: 'Not logged in',
         errorCode: 'auth/unauthorized'
       });
     }
@@ -17,7 +17,7 @@ export const verifyAdmin = async (req: Request, res: Response, next: NextFunctio
 
     if (!dbUser || dbUser.role !== 'admin') {
       return res.status(403).json({
-        message: '需要管理员权限',
+        message: 'Admin permission required',
         errorCode: 'auth/forbidden'
       });
     }
@@ -25,7 +25,7 @@ export const verifyAdmin = async (req: Request, res: Response, next: NextFunctio
     next();
   } catch (error: any) {
     return res.status(500).json({
-      message: '权限验证失败',
+      message: 'Permission verification failed',
       error: error.message
     });
   }

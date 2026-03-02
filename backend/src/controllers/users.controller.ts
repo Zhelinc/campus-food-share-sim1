@@ -17,31 +17,31 @@ export const registerUser = async (req: Request, res: Response) => {
     const { email, password, confirmPassword, role = 'user', invitationCode } = req.body;
 
     if (!email || !password || !confirmPassword) {
-      return res.status(400).json({ message: '邮箱、密码和确认密码为必填项', errorCode: 'auth/empty-params' });
+      return res.status(400).json({ message: 'Email, password and confirm password are required', errorCode: 'auth/empty-params' });
     }
     if (password !== confirmPassword) {
-      return res.status(400).json({ message: '两次输入的密码不一致', errorCode: 'auth/password-mismatch' });
+      return res.status(400).json({ message: 'Passwords do not match', errorCode: 'auth/password-mismatch' });
     }
 
     const AUTHORIZED_SCHOOL_DOMAINS = ['bupt.edu.cn', 'qmul.ac.uk'];
     const isAuthorized = AUTHORIZED_SCHOOL_DOMAINS.some(domain => email.endsWith(`@${domain}`));
     if (!isAuthorized) {
-      return res.status(400).json({ message: '该邮箱域名未授权', errorCode: 'auth/invalid-email-domain' });
+      return res.status(400).json({ message: 'This email domain is not authorized', errorCode: 'auth/invalid-email-domain' });
     }
 
     const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{6,}$/;
     if (!PASSWORD_REGEX.test(password)) {
-      return res.status(400).json({ message: '密码复杂度不足', errorCode: 'auth/weak-password' });
+      return res.status(400).json({ message: 'Password complexity is insufficient', errorCode: 'auth/weak-password' });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(409).json({ message: '该邮箱已注册', errorCode: 'auth/email-already-exists' });
+      return res.status(409).json({ message: 'Email already registered', errorCode: 'auth/email-already-exists' });
     }
 
     if (role === 'admin') {
       if (!invitationCode || invitationCode !== ADMIN_INVITE_CODE) {
-        return res.status(403).json({ message: '管理员邀请码错误', errorCode: 'auth/invalid-invitation-code' });
+        return res.status(403).json({ message: 'Invalid admin invitation code', errorCode: 'auth/invalid-invitation-code' });
       }
     }
 
@@ -60,7 +60,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
     const mockFirebaseToken = `mock-token-${newUser.firebaseUid}`;
     return res.status(201).json({
-      message: '注册成功',
+      message: 'Registration successful',
       token: mockFirebaseToken,
       user: {
         uid: newUser.firebaseUid,
@@ -71,8 +71,8 @@ export const registerUser = async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
-    console.error('注册失败：', error);
-    return res.status(500).json({ message: '注册失败', error: error.message });
+    console.error('Registration failed:', error);
+    return res.status(500).json({ message: 'Registration failed', error: error.message });
   }
 };
 
@@ -83,28 +83,28 @@ export const loginUser = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ message: '邮箱和密码为必填项', errorCode: 'auth/empty-params' });
+      return res.status(400).json({ message: 'Email and password are required', errorCode: 'auth/empty-params' });
     }
 
     const dbUser = await prisma.user.findUnique({ where: { email } });
     if (!dbUser) {
-      return res.status(401).json({ message: '邮箱或密码错误', errorCode: 'auth/invalid-credentials' });
+      return res.status(401).json({ message: 'Invalid email or password', errorCode: 'auth/invalid-credentials' });
     }
 
     // 密码验证（兼容旧用户无密码的情况，但正常情况应有密码）
     if (dbUser.password) {
       const valid = await bcrypt.compare(password, dbUser.password);
       if (!valid) {
-        return res.status(401).json({ message: '邮箱或密码错误', errorCode: 'auth/invalid-credentials' });
+        return res.status(401).json({ message: 'Invalid email or password', errorCode: 'auth/invalid-credentials' });
       }
     } else {
       // 开发环境临时处理：无密码用户允许任意密码登录，并提示设置密码
-      console.warn(`用户 ${email} 没有设置密码，使用临时登录。请提醒用户尽快设置密码。`);
+      console.warn(`User ${email} has no password set, using temporary login. Please remind user to set password.`);
     }
 
     const mockFirebaseToken = `mock-token-${dbUser.firebaseUid}`;
     return res.status(200).json({
-      message: '登录成功',
+      message: 'Login successful',
       token: mockFirebaseToken,
       expiresIn: 7200,
       user: {
@@ -117,8 +117,8 @@ export const loginUser = async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
-    console.error('登录失败：', error);
-    return res.status(400).json({ message: error.message || '登录失败', errorCode: error.code || 'UNKNOWN_ERROR' });
+    console.error('Login failed:', error);
+    return res.status(400).json({ message: error.message || 'Login failed', errorCode: error.code || 'UNKNOWN_ERROR' });
   }
 };
 
@@ -129,25 +129,41 @@ export const getUserInfo = async (req: Request, res: Response) => {
   try {
     const user = req.user;
     if (!user) {
-      return res.status(401).json({ message: '未登录', errorCode: 'auth/unauthorized' });
+      return res.status(401).json({ message: 'Not logged in', errorCode: 'auth/unauthorized' });
     }
 
-    const dbUser = await prisma.user.findUnique({
+        const dbUser = await prisma.user.findUnique({
       where: { firebaseUid: user.uid },
       include: {
         Food: { select: { title: true, status: true, location: true, quality: true, campus: true } },
-        Claim: { include: { Food: { select: { title: true, status: true, imageUrl: true } } } }
+        Claim: {
+          include: {
+            Food: {
+              select: {
+                id: true,            // 👈 关键：必须包含 id
+                title: true,
+                description: true,
+                imageUrl: true,
+                status: true,
+                location: true,
+                quality: true,
+                campus: true,
+                // 如果有其他字段（如 allergens），也可按需添加
+              }
+            }
+          }
+        }
       }
     });
 
     if (!dbUser) {
-      return res.status(404).json({ message: '用户不存在', errorCode: 'auth/user-not-found' });
+      return res.status(404).json({ message: 'User not found', errorCode: 'auth/user-not-found' });
     }
 
     // 移除密码字段
     const { password, ...userWithoutPassword } = dbUser;
     return res.status(200).json({
-      message: '获取用户信息成功',
+      message: 'Get user info successfully',
       user: {
         ...userWithoutPassword,
         publishedFoods: dbUser.Food,
@@ -156,8 +172,8 @@ export const getUserInfo = async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
-    console.error('获取用户信息失败：', error);
-    return res.status(500).json({ message: '获取用户信息失败', error: error.message });
+    console.error('Failed to get user info:', error);
+    return res.status(500).json({ message: 'Failed to get user info', error: error.message });
   }
 };
 
@@ -168,34 +184,34 @@ export const changePassword = async (req: Request, res: Response) => {
   try {
     const user = req.user;
     if (!user) {
-      return res.status(401).json({ message: '未登录', errorCode: 'auth/unauthorized' });
+      return res.status(401).json({ message: 'Not logged in', errorCode: 'auth/unauthorized' });
     }
 
     const { oldPassword, newPassword, confirmNewPassword } = req.body;
     if (!oldPassword || !newPassword || !confirmNewPassword) {
-      return res.status(400).json({ message: '所有字段均为必填', errorCode: 'auth/empty-params' });
+      return res.status(400).json({ message: 'All fields are required', errorCode: 'auth/empty-params' });
     }
     if (newPassword !== confirmNewPassword) {
-      return res.status(400).json({ message: '新密码不一致', errorCode: 'auth/password-mismatch' });
+      return res.status(400).json({ message: 'New passwords do not match', errorCode: 'auth/password-mismatch' });
     }
 
     const dbUser = await prisma.user.findUnique({
       where: { firebaseUid: user.uid }
     });
     if (!dbUser) {
-      return res.status(404).json({ message: '用户不存在', errorCode: 'auth/user-not-found' });
+      return res.status(404).json({ message: 'User not found', errorCode: 'auth/user-not-found' });
     }
 
     if (dbUser.password) {
       const valid = await bcrypt.compare(oldPassword, dbUser.password);
       if (!valid) {
-        return res.status(401).json({ message: '旧密码错误', errorCode: 'auth/invalid-old-password' });
+        return res.status(401).json({ message: 'Invalid old password', errorCode: 'auth/invalid-old-password' });
       }
     }
 
     const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{6,}$/;
     if (!PASSWORD_REGEX.test(newPassword)) {
-      return res.status(400).json({ message: '新密码复杂度不足', errorCode: 'auth/weak-password' });
+      return res.status(400).json({ message: 'New password complexity is insufficient', errorCode: 'auth/weak-password' });
     }
 
     const hashedNew = await bcrypt.hash(newPassword, SALT_ROUNDS);
@@ -204,10 +220,10 @@ export const changePassword = async (req: Request, res: Response) => {
       data: { password: hashedNew, updatedAt: new Date() }
     });
 
-    return res.status(200).json({ message: '密码修改成功' });
+    return res.status(200).json({ message: 'Password changed successfully' });
   } catch (error: any) {
-    console.error('修改密码失败：', error);
-    return res.status(500).json({ message: '修改密码失败', error: error.message });
+    console.error('Failed to change password:', error);
+    return res.status(500).json({ message: 'Failed to change password', error: error.message });
   }
 };
 
@@ -218,13 +234,13 @@ export const forgotPassword = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
     if (!email) {
-      return res.status(400).json({ message: '邮箱不能为空', errorCode: 'auth/empty-params' });
+      return res.status(400).json({ message: 'Email cannot be empty', errorCode: 'auth/empty-params' });
     }
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       // 为安全，返回相同消息
-      return res.status(200).json({ message: '如果邮箱存在，重置验证码已发送' });
+      return res.status(200).json({ message: 'If the email exists, a reset code has been sent' });
     }
 
     // 生成6位数字验证码
@@ -233,11 +249,11 @@ export const forgotPassword = async (req: Request, res: Response) => {
     resetCodes.set(email, { code, expires });
 
     // 模拟发送邮件（实际应调用邮件服务）
-    console.log(`[模拟邮件] 向 ${email} 发送重置密码验证码: ${code}`);
+    console.log(`[Simulated email] Sending reset code to ${email}: ${code}`);
 
-    return res.status(200).json({ message: '验证码已发送至您的邮箱，请查收' });
+    return res.status(200).json({ message: 'Verification code sent to your email, please check' });
   } catch (error: any) {
-    return res.status(500).json({ message: '发送失败', error: error.message });
+    return res.status(500).json({ message: 'Failed to send', error: error.message });
   }
 };
 
@@ -248,26 +264,26 @@ export const resetPassword = async (req: Request, res: Response) => {
   try {
     const { email, code, newPassword, confirmNewPassword } = req.body;
     if (!email || !code || !newPassword || !confirmNewPassword) {
-      return res.status(400).json({ message: '所有字段均为必填', errorCode: 'auth/empty-params' });
+      return res.status(400).json({ message: 'All fields are required', errorCode: 'auth/empty-params' });
     }
     if (newPassword !== confirmNewPassword) {
-      return res.status(400).json({ message: '两次密码不一致', errorCode: 'auth/password-mismatch' });
+      return res.status(400).json({ message: 'Passwords do not match', errorCode: 'auth/password-mismatch' });
     }
 
     // 密码复杂度校验
     const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{6,}$/;
     if (!PASSWORD_REGEX.test(newPassword)) {
-      return res.status(400).json({ message: '密码复杂度不足', errorCode: 'auth/weak-password' });
+      return res.status(400).json({ message: 'Password complexity is insufficient', errorCode: 'auth/weak-password' });
     }
 
     const stored = resetCodes.get(email);
     if (!stored || stored.code !== code || stored.expires < Date.now()) {
-      return res.status(400).json({ message: '验证码无效或已过期', errorCode: 'auth/invalid-code' });
+      return res.status(400).json({ message: 'Invalid or expired verification code', errorCode: 'auth/invalid-code' });
     }
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(404).json({ message: '用户不存在', errorCode: 'auth/user-not-found' });
+      return res.status(404).json({ message: 'User not found', errorCode: 'auth/user-not-found' });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
@@ -279,8 +295,8 @@ export const resetPassword = async (req: Request, res: Response) => {
     // 清除验证码
     resetCodes.delete(email);
 
-    return res.status(200).json({ message: '密码重置成功' });
+    return res.status(200).json({ message: 'Password reset successfully' });
   } catch (error: any) {
-    return res.status(500).json({ message: '重置失败', error: error.message });
+    return res.status(500).json({ message: 'Reset failed', error: error.message });
   }
 };

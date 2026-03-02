@@ -16,9 +16,9 @@ export const getAllUsers = async (req: Request, res: Response) => {
         Claim: true
       }
     });
-    return res.status(200).json({ message: '获取用户列表成功', users });
+    return res.status(200).json({ message: 'Get user list successfully', users });
   } catch (error: any) {
-    return res.status(500).json({ message: '获取用户列表失败', error: error.message });
+    return res.status(500).json({ message: 'Failed to get user list', error: error.message });
   }
 };
 
@@ -36,7 +36,7 @@ export const updateUser = async (req: Request, res: Response) => {
       }
     });
     if (existing) {
-      return res.status(409).json({ message: '邮箱已被使用', errorCode: 'auth/email-already-exists' });
+      return res.status(409).json({ message: 'Email already in use', errorCode: 'auth/email-already-exists' });
     }
 
     const updatedUser = await prisma.user.update({
@@ -46,9 +46,9 @@ export const updateUser = async (req: Request, res: Response) => {
 
     // 移除密码字段后返回
     const { password, ...userWithoutPassword } = updatedUser;
-    return res.status(200).json({ message: '用户更新成功', user: userWithoutPassword });
+    return res.status(200).json({ message: 'User updated successfully', user: userWithoutPassword });
   } catch (error: any) {
-    return res.status(500).json({ message: '更新用户失败', error: error.message });
+    return res.status(500).json({ message: 'Failed to update user', error: error.message });
   }
 };
 
@@ -73,9 +73,9 @@ export const deleteUser = async (req: Request, res: Response) => {
     // 最后删除用户
     await prisma.user.delete({ where: { id } });
 
-    return res.status(200).json({ message: '用户删除成功' });
+    return res.status(200).json({ message: 'User deleted successfully' });
   } catch (error: any) {
-    return res.status(500).json({ message: '删除用户失败', error: error.message });
+    return res.status(500).json({ message: 'Failed to delete user', error: error.message });
   }
 };
 
@@ -90,9 +90,9 @@ export const getAllFoods = async (req: Request, res: Response) => {
       },
       orderBy: { createdAt: 'desc' }
     });
-    return res.status(200).json({ message: '获取所有食物成功', foods });
+    return res.status(200).json({ message: 'Get all foods successfully', foods });
   } catch (error: any) {
-    return res.status(500).json({ message: '获取食物失败', error: error.message });
+    return res.status(500).json({ message: 'Failed to get foods', error: error.message });
   }
 };
 
@@ -105,9 +105,9 @@ export const updateAnyFood = async (req: Request, res: Response) => {
       where: { id },
       data: { ...data, updatedAt: new Date() }
     });
-    return res.status(200).json({ message: '食物更新成功', food: updated });
+    return res.status(200).json({ message: 'Food updated successfully', food: updated });
   } catch (error: any) {
-    return res.status(500).json({ message: '更新食物失败', error: error.message });
+    return res.status(500).json({ message: 'Failed to update food', error: error.message });
   }
 };
 
@@ -117,8 +117,8 @@ export const deleteAnyFood = async (req: Request, res: Response) => {
     const id = foodId as string;
     await prisma.claim.deleteMany({ where: { foodId: id } });
     await prisma.food.delete({ where: { id } });
-    return res.status(200).json({ message: '食物删除成功' });
+    return res.status(200).json({ message: 'Food deleted successfully' });
   } catch (error: any) {
-    return res.status(500).json({ message: '删除食物失败', error: error.message });
+    return res.status(500).json({ message: 'Failed to delete food', error: error.message });
   }
 };

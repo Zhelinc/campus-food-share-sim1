@@ -16,12 +16,12 @@ export const verifyIdToken = async (token: string) => {
     
     // 额外验证：必须是学校邮箱
     if (!decodedToken.email?.endsWith('@university.edu')) {
-      throw new Error('仅限学校邮箱注册');
+      throw new Error('Only school email allowed');
     }
     
     return decodedToken;
   } catch (error) {
-    throw new Error('无效的认证令牌');
+    throw new Error('Invalid authentication token');
   }
 };
 

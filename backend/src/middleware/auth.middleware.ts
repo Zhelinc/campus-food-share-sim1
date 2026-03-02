@@ -22,7 +22,7 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction) => 
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
-        message: '未提供有效的Token',
+        message: 'No valid token provided',
         errorCode: 'auth/missing-token'
       });
     }
@@ -31,7 +31,7 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction) => 
     const token = authHeader.split(' ')[1];
     if (!token) {
       return res.status(401).json({
-        message: 'Token格式错误',
+        message: 'Invalid token format',
         errorCode: 'auth/invalid-token'
       });
     }
@@ -50,7 +50,7 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction) => 
 
   } catch (error: any) {
     return res.status(401).json({
-      message: 'Token验证失败',
+      message: 'Token verification failed',
       errorCode: 'auth/token-verify-failed',
       error: error.message
     });

@@ -21,7 +21,7 @@ const AdminFoods = () => {
       const res = await getAllFoods();
       setFoods(res.foods || []);
     } catch (err) {
-      alert('加载失败：' + (err.response?.data?.message || err.message));
+      alert('Failed to load: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -39,36 +39,36 @@ const AdminFoods = () => {
   const handleUpdate = async () => {
     try {
       await updateAnyFood(editingFood.id, formData);
-      alert('更新成功');
+      alert('Updated successfully');
       setEditingFood(null);
       loadFoods();
     } catch (err) {
-      alert('更新失败：' + (err.response?.data?.message || err.message));
+      alert('Update failed: ' + (err.response?.data?.message || err.message));
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('确定删除此食物？')) return;
+    if (!window.confirm('Are you sure you want to delete this food?')) return;
     try {
       await deleteAnyFood(id);
-      alert('删除成功');
+      alert('Deleted successfully');
       loadFoods();
     } catch (err) {
-      alert('删除失败：' + (err.response?.data?.message || err.message));
+      alert('Delete failed: ' + (err.response?.data?.message || err.message));
     }
   };
 
   return (
     <div>
-      <h2>食物管理</h2>
+      <h2>Food Management</h2>
 
-      {/* 编辑弹窗（简单内联） */}
+      {/* Edit modal */}
       {editingFood && (
         <div style={{ border: '1px solid #ccc', padding: '20px', marginBottom: '20px', backgroundColor: 'white' }}>
-          <h3>编辑食物</h3>
+          <h3>Edit Food</h3>
           <div style={{ marginBottom: '10px' }}>
             <input
-              placeholder="标题"
+              placeholder="Title"
               value={formData.title}
               onChange={e => setFormData({ ...formData, title: e.target.value })}
               style={{ width: '100%', padding: '8px' }}
@@ -76,7 +76,7 @@ const AdminFoods = () => {
           </div>
           <div style={{ marginBottom: '10px' }}>
             <textarea
-              placeholder="描述"
+              placeholder="Description"
               value={formData.description}
               onChange={e => setFormData({ ...formData, description: e.target.value })}
               style={{ width: '100%', padding: '8px', minHeight: '60px' }}
@@ -84,7 +84,7 @@ const AdminFoods = () => {
           </div>
           <div style={{ marginBottom: '10px' }}>
             <input
-              placeholder="位置"
+              placeholder="Location"
               value={formData.location}
               onChange={e => setFormData({ ...formData, location: e.target.value })}
               style={{ width: '100%', padding: '8px' }}
@@ -92,7 +92,7 @@ const AdminFoods = () => {
           </div>
           <div style={{ marginBottom: '10px' }}>
             <input
-              placeholder="质量"
+              placeholder="Quality"
               value={formData.quality}
               onChange={e => setFormData({ ...formData, quality: e.target.value })}
               style={{ width: '100%', padding: '8px' }}
@@ -104,25 +104,25 @@ const AdminFoods = () => {
               onChange={e => setFormData({ ...formData, status: e.target.value })}
               style={{ width: '100%', padding: '8px' }}
             >
-              <option value="AVAILABLE">可认领</option>
-              <option value="CLAIMED">已认领</option>
-              <option value="COMPLETED">已完成</option>
+              <option value="AVAILABLE">Available</option>
+              <option value="CLAIMED">Claimed</option>
+              <option value="COMPLETED">Completed</option>
             </select>
           </div>
-          <button onClick={handleUpdate} style={{ marginRight: '10px' }}>保存</button>
-          <button onClick={() => setEditingFood(null)}>取消</button>
+          <button onClick={handleUpdate} style={{ marginRight: '10px' }}>Save</button>
+          <button onClick={() => setEditingFood(null)}>Cancel</button>
         </div>
       )}
 
-      {/* 食物列表表格 */}
+      {/* Food table */}
       <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white' }}>
         <thead>
           <tr style={{ backgroundColor: '#f0f0f0' }}>
             <th style={{ padding: '10px', border: '1px solid #ddd' }}>ID</th>
-            <th style={{ padding: '10px', border: '1px solid #ddd' }}>标题</th>
-            <th style={{ padding: '10px', border: '1px solid #ddd' }}>发布者</th>
-            <th style={{ padding: '10px', border: '1px solid #ddd' }}>状态</th>
-            <th style={{ padding: '10px', border: '1px solid #ddd' }}>操作</th>
+            <th style={{ padding: '10px', border: '1px solid #ddd' }}>Title</th>
+            <th style={{ padding: '10px', border: '1px solid #ddd' }}>Publisher</th>
+            <th style={{ padding: '10px', border: '1px solid #ddd' }}>Status</th>
+            <th style={{ padding: '10px', border: '1px solid #ddd' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -133,8 +133,8 @@ const AdminFoods = () => {
               <td style={{ padding: '10px', border: '1px solid #ddd' }}>{f.publisher?.email}</td>
               <td style={{ padding: '10px', border: '1px solid #ddd' }}>{f.status}</td>
               <td style={{ padding: '10px', border: '1px solid #ddd' }}>
-                <button onClick={() => handleEdit(f)}>修改</button>
-                <button onClick={() => handleDelete(f.id)} style={{ marginLeft: '5px' }}>删除</button>
+                <button onClick={() => handleEdit(f)}>Edit</button>
+                <button onClick={() => handleDelete(f.id)} style={{ marginLeft: '5px' }}>Delete</button>
               </td>
             </tr>
           ))}

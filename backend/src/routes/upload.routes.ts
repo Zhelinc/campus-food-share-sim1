@@ -24,7 +24,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: FileFilterCallb
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
-    cb(new Error('只允许上传图片文件'));
+    cb(new Error('Only image files are allowed'));
   }
 };
 

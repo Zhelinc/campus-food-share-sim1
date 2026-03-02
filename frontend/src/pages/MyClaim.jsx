@@ -1,5 +1,5 @@
-// frontend/src/pages/MyClaim.jsx
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { getUserInfo } from '../api/user';
 
 const MyClaim = () => {
@@ -17,14 +17,13 @@ const MyClaim = () => {
 
         const userRes = await getUserInfo();
         setUser(userRes.user);
-        // 注意：getUserInfo 返回的 claimedFoods 字段可能不完整，可根据实际需求扩展后端
         setClaimedFoods(userRes.user.claimedFoods || []);
       } catch (err) {
         if (err.response?.status === 401) {
           localStorage.removeItem('token');
           window.location.href = '/login';
         } else {
-          alert('加载认领列表失败：' + (err.response?.data?.message || err.message));
+          alert('Failed to load claims: ' + (err.response?.data?.message || err.message));
         }
       }
     };
@@ -33,11 +32,14 @@ const MyClaim = () => {
 
   return (
     <div style={{ width: '1200px', margin: '0 auto', padding: '20px' }}>
-      <h2 style={{ margin: '0 0 20px 0', color: '#333' }}>我的认领</h2>
+      <div style={{ marginBottom: '20px' }}>
+        <Link to="/" style={{ color: '#ff6700', textDecoration: 'none' }}>← Back to Home</Link>
+      </div>
+      <h2 style={{ margin: '0 0 20px 0', color: '#333' }}>My Claims</h2>
       
       {claimedFoods.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '50px', color: '#999' }}>
-          你还没有认领任何食物，快去首页看看吧～
+          You haven't claimed any food yet. Go to the homepage and claim some!
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
@@ -52,21 +54,20 @@ const MyClaim = () => {
               }}
             >
               <img 
-                src={food.imageUrl || 'https://via.placeholder.com/300x200?text=食物图片'} 
+                src={food.imageUrl || '/images/blind-box.png'} 
                 alt={food.title}
                 style={{ width: '100%', height: '180px', objectFit: 'cover' }}
               />
               <div style={{ padding: '15px' }}>
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '18px' }}>{food.title}</h4>
-                <p style={{ margin: '5px 0', color: '#666' }}>位置：{food.location || '未知'}</p>
-                <p style={{ margin: '5px 0', color: '#666' }}>质量：{food.quality || '未知'}</p>
+                <p style={{ margin: '5px 0', color: '#666' }}>Location: {food.location || 'Unknown'}</p>
+                <p style={{ margin: '5px 0', color: '#666' }}>Quality: {food.quality || 'Unknown'}</p>
                 <p style={{ 
                   margin: '5px 0', 
                   color: food.status === 'AVAILABLE' ? '#4caf50' : '#f44336' 
                 }}>
-                  状态：{food.status === 'AVAILABLE' ? '可认领' : '已认领'}
+                  Status: {food.status === 'AVAILABLE' ? 'Available' : 'Claimed'}
                 </p>
-                {/* 如果需要显示认领确认状态，可以扩展后端返回的数据 */}
               </div>
             </div>
           ))}

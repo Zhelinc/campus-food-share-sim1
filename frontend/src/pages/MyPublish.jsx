@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { getUserInfo } from '../api/user';
 import { getMyPublishedFoods, updateFood, deleteFood } from '../api/food';
 
@@ -15,11 +16,9 @@ const MyPublish = () => {
     category: ''
   });
 
-  // 加载我的发布
   useEffect(() => {
     const initData = async () => {
       try {
-        // 先检查token是否存在，不存在直接跳登录（不删token）
         const token = localStorage.getItem('token');
         if (!token) {
           window.location.href = '/login';
@@ -32,21 +31,18 @@ const MyPublish = () => {
         const foodRes = await getMyPublishedFoods();
         setMyFoods(foodRes.foods || []);
       } catch (err) {
-        // 关键修复：只在明确401（token失效）时才删token，其他错误只提示
         if (err.response?.status === 401) {
           localStorage.removeItem('token');
           window.location.href = '/login';
         } else {
-          // 其他错误（网络错、500、404等）不删token，只提示用户
-          alert('加载我的发布失败：' + (err.response?.data?.message || err.message || '请稍后重试'));
-          console.error('加载我的发布失败：', err);
+          alert('Failed to load your publications: ' + (err.response?.data?.message || err.message || 'Please try again later'));
+          console.error('Failed to load publications:', err);
         }
       }
     };
     initData();
   }, []);
 
-  // 打开修改弹窗
   const openEditModal = (food) => {
     setCurrentEditFood(food);
     setEditFoodData({
@@ -59,43 +55,42 @@ const MyPublish = () => {
     setShowEditModal(true);
   };
 
-  // 提交修改
   const submitEdit = async () => {
     if (!currentEditFood) return;
     try {
       await updateFood(currentEditFood.id, editFoodData);
-      alert('修改成功！');
+      alert('Updated successfully!');
       setShowEditModal(false);
-      // 刷新列表
       const foodRes = await getMyPublishedFoods();
       setMyFoods(foodRes.foods || []);
     } catch (err) {
-      alert('修改失败：' + (err.response?.data?.message || err.message));
+      alert('Update failed: ' + (err.response?.data?.message || err.message));
     }
   };
 
-  // 删除食物
   const handleDelete = async (foodId) => {
-    if (window.confirm('确定删除？')) {
+    if (window.confirm('Are you sure you want to delete this post?')) {
       try {
         await deleteFood(foodId);
-        alert('删除成功！');
-        // 刷新列表
+        alert('Deleted successfully!');
         const foodRes = await getMyPublishedFoods();
         setMyFoods(foodRes.foods || []);
       } catch (err) {
-        alert('删除失败：' + (err.response?.data?.message || err.message));
+        alert('Delete failed: ' + (err.response?.data?.message || err.message));
       }
     }
   };
 
   return (
     <div style={{ width: '1200px', margin: '0 auto', padding: '20px' }}>
-      <h2 style={{ margin: '0 0 20px 0', color: '#333' }}>我的发布</h2>
+      <div style={{ marginBottom: '20px' }}>
+        <Link to="/" style={{ color: '#ff6700', textDecoration: 'none' }}>← Back to Home</Link>
+      </div>
+      <h2 style={{ margin: '0 0 20px 0', color: '#333' }}>My Publications</h2>
       
       {myFoods.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '50px', color: '#999' }}>
-          你还没有发布任何食物，快去首页发布吧～
+          You haven't published any food yet. Go to the homepage and publish some!
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
@@ -110,26 +105,25 @@ const MyPublish = () => {
               }}
             >
               <img 
-                src={food.imageUrl || 'https://via.placeholder.com/300x200?text=食物图片'} 
+                src={food.imageUrl || '/images/blind-box.png'} 
                 alt={food.title}
                 style={{ width: '100%', height: '180px', objectFit: 'cover' }}
               />
               <div style={{ padding: '15px' }}>
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '18px' }}>{food.title}</h4>
-                <p style={{ margin: '5px 0', color: '#666' }}>描述：{food.description || '无'}</p>
-                <p style={{ margin: '5px 0', color: '#666' }}>位置：{food.location}</p>
-                <p style={{ margin: '5px 0', color: '#666' }}>质量：{food.quality}</p>
-                <p style={{ margin: '5px 0', color: '#666' }}>类别：{food.category}</p>
+                <p style={{ margin: '5px 0', color: '#666' }}>Description: {food.description || 'None'}</p>
+                <p style={{ margin: '5px 0', color: '#666' }}>Location: {food.location}</p>
+                <p style={{ margin: '5px 0', color: '#666' }}>Quality: {food.quality}</p>
+                <p style={{ margin: '5px 0', color: '#666' }}>Category: {food.category}</p>
                 <p style={{ 
                   margin: '5px 0', 
                   color: food.status === 'AVAILABLE' ? '#4caf50' : '#f44336' 
                 }}>
-                  状态：{food.status === 'AVAILABLE' ? '可认领' : '已认领'}
+                  Status: {food.status === 'AVAILABLE' ? 'Available' : 'Claimed'}
                 </p>
-                {/* 认领状态（对接Claim模型） */}
                 {food.claim && (
                   <p style={{ margin: '5px 0', color: '#666' }}>
-                    认领状态：{food.claim.status === 'PENDING' ? '待确认' : '已确认'}
+                    Claim Status: {food.claim.status === 'PENDING' ? 'Pending' : 'Confirmed'}
                   </p>
                 )}
                 <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
@@ -145,7 +139,7 @@ const MyPublish = () => {
                       cursor: 'pointer'
                     }}
                   >
-                    修改
+                    Edit
                   </button>
                   <button
                     onClick={() => handleDelete(food.id)}
@@ -159,7 +153,7 @@ const MyPublish = () => {
                       cursor: 'pointer'
                     }}
                   >
-                    删除
+                    Delete
                   </button>
                 </div>
               </div>
@@ -168,7 +162,6 @@ const MyPublish = () => {
         </div>
       )}
 
-      {/* 修改弹窗（和首页的弹窗代码一致） */}
       {showEditModal && (
         <div style={{ 
           position: 'fixed', 
@@ -187,9 +180,9 @@ const MyPublish = () => {
             borderRadius: '8px',
             width: '500px'
           }}>
-            <h3 style={{ margin: '0 0 20px 0' }}>修改食物信息</h3>
+            <h3 style={{ margin: '0 0 20px 0' }}>Edit Food</h3>
             <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px' }}>标题：</label>
+              <label style={{ display: 'block', marginBottom: '5px' }}>Title:</label>
               <input
                 type="text"
                 value={editFoodData.title}
@@ -198,7 +191,7 @@ const MyPublish = () => {
               />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px' }}>描述：</label>
+              <label style={{ display: 'block', marginBottom: '5px' }}>Description:</label>
               <textarea
                 value={editFoodData.description}
                 onChange={(e) => setEditFoodData({ ...editFoodData, description: e.target.value })}
@@ -206,7 +199,7 @@ const MyPublish = () => {
               />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px' }}>食堂位置：</label>
+              <label style={{ display: 'block', marginBottom: '5px' }}>Location:</label>
               <input
                 type="text"
                 value={editFoodData.location}
@@ -215,7 +208,7 @@ const MyPublish = () => {
               />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px' }}>质量：</label>
+              <label style={{ display: 'block', marginBottom: '5px' }}>Quality:</label>
               <input
                 type="text"
                 value={editFoodData.quality}
@@ -224,7 +217,7 @@ const MyPublish = () => {
               />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px' }}>类别：</label>
+              <label style={{ display: 'block', marginBottom: '5px' }}>Category:</label>
               <input
                 type="text"
                 value={editFoodData.category}
@@ -243,7 +236,7 @@ const MyPublish = () => {
                   cursor: 'pointer'
                 }}
               >
-                取消
+                Cancel
               </button>
               <button
                 onClick={submitEdit}
@@ -256,7 +249,7 @@ const MyPublish = () => {
                   cursor: 'pointer'
                 }}
               >
-                保存修改
+                Save
               </button>
             </div>
           </div>

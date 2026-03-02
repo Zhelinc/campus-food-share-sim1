@@ -12,20 +12,20 @@ if (!fs.existsSync(uploadDir)) {
 export const uploadImage = async (req: Request, res: Response) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: '没有上传文件' });
+      return res.status(400).json({ message: 'No file uploaded' });
     }
 
     // 生成可访问的URL（假设后端运行在 http://localhost:5000）
     const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
 
     return res.status(200).json({
-      message: '上传成功',
+      message: 'Upload successful',
       url: fileUrl
     });
   } catch (error: any) {
-    console.error('上传失败：', error);
+    console.error('Upload failed:', error);
     return res.status(500).json({
-      message: '上传失败',
+      message: 'Upload failed',
       error: error.message
     });
   }

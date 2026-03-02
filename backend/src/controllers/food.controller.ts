@@ -1,7 +1,7 @@
 // backend/src/controllers/food.controller.ts
 import { Request, Response } from 'express';
 import prisma from '../utils/db';
-import { generateId } from '../utils/idGenerator'; // 请确保此文件存在并导出 generateId
+import { generateId } from '../utils/idGenerator';
 
 /**
  * 发布食物接口
@@ -11,22 +11,22 @@ export const publishFood = async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) {
       return res.status(401).json({
-        message: '未登录',
+        message: 'Not logged in',
         errorCode: 'auth/unauthorized'
       });
     }
 
-    const { title, description, allergens, campus, location, quality, imageUrl } = req.body;
+    const { title, description, allergens, campus, location, quality, imageUrl, category } = req.body;
 
     // 校验必填项
     if (!title || !description || !campus || !location || !quality) {
       return res.status(400).json({
-        message: '标题、描述、校区、分享地址、质量为必填项',
+        message: 'Title, description, campus, location, quality are required',
         errorCode: 'food/missing-params'
       });
     }
 
-    // 查找/创建用户（需提供 id 和 updatedAt）
+    // 查找/创建用户
     let dbUser = await prisma.user.findUnique({
       where: { firebaseUid: user.uid }
     });
@@ -51,25 +51,26 @@ export const publishFood = async (req: Request, res: Response) => {
         campus,
         location,
         quality,
+        category: category || null, // 保存 category
         imageUrl: imageUrl || null,
         publisherId: dbUser.id,
         updatedAt: new Date(),
       },
       include: {
-        User: { select: { email: true } } // 关联发布者信息，字段名为 User
+        User: { select: { email: true } }
       }
     });
 
     return res.status(201).json({
-      message: '食物发布成功',
+      message: 'Food published successfully',
       foodId: food.id,
       food: food
     });
 
   } catch (error: any) {
-    console.error('发布食物失败：', error);
+    console.error('Publish food failed:', error);
     return res.status(500).json({
-      message: '发布失败',
+      message: 'Publish failed',
       errorCode: 'food/publish-failed',
       error: error.message
     });
@@ -84,16 +85,17 @@ export const editFood = async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) {
       return res.status(401).json({
-        message: '未登录',
+        message: 'Not logged in',
         errorCode: 'auth/unauthorized'
       });
     }
 
-    const { foodId, title, description, allergens, campus, location, quality, imageUrl, status } = req.body;
+    const foodId = req.params.foodId as string; // 从 URL 参数获取
+    const { title, description, allergens, campus, location, quality, imageUrl, status, category } = req.body;
 
     if (!foodId) {
       return res.status(400).json({
-        message: '食物ID为必填项',
+        message: 'Food ID is required',
         errorCode: 'food/missing-food-id'
       });
     }
@@ -105,7 +107,7 @@ export const editFood = async (req: Request, res: Response) => {
     });
     if (!food) {
       return res.status(404).json({
-        message: '食物不存在',
+        message: 'Food not found',
         errorCode: 'food/not-found'
       });
     }
@@ -116,7 +118,7 @@ export const editFood = async (req: Request, res: Response) => {
     });
     if (!dbUser || food.publisherId !== dbUser.id) {
       return res.status(403).json({
-        message: '无权限编辑该食物（仅发布者可编辑）',
+        message: 'No permission to edit this food (only publisher can edit)',
         errorCode: 'food/forbidden-edit'
       });
     }
@@ -131,7 +133,8 @@ export const editFood = async (req: Request, res: Response) => {
     if (quality) updateData.quality = quality;
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
     if (status) updateData.status = status;
-    updateData.updatedAt = new Date(); // 手动更新 updatedAt
+    if (category !== undefined) updateData.category = category; // 更新 category
+    updateData.updatedAt = new Date();
 
     const updatedFood = await prisma.food.update({
       where: { id: foodId },
@@ -140,14 +143,14 @@ export const editFood = async (req: Request, res: Response) => {
     });
 
     return res.status(200).json({
-      message: '食物编辑成功',
+      message: 'Food edited successfully',
       food: updatedFood
     });
 
   } catch (error: any) {
-    console.error('编辑食物失败：', error);
+    console.error('Edit food failed:', error);
     return res.status(500).json({
-      message: '编辑失败',
+      message: 'Edit failed',
       errorCode: 'food/edit-failed',
       error: error.message
     });
@@ -162,27 +165,27 @@ export const deleteFood = async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) {
       return res.status(401).json({
-        message: '未登录',
+        message: 'Not logged in',
         errorCode: 'auth/unauthorized'
       });
     }
 
-    const { foodId } = req.body;
+    const foodId = req.params.foodId as string; // 从 URL 参数获取
     if (!foodId) {
       return res.status(400).json({
-        message: '食物ID为必填项',
+        message: 'Food ID is required',
         errorCode: 'food/missing-food-id'
       });
     }
 
-    // 查找食物，包含可能的认领信息
+    // 查找食物，包含发布者和认领信息
     const food = await prisma.food.findUnique({
       where: { id: foodId },
       include: { User: true, Claim: true }
     });
     if (!food) {
       return res.status(404).json({
-        message: '食物不存在',
+        message: 'Food not found',
         errorCode: 'food/not-found'
       });
     }
@@ -192,7 +195,7 @@ export const deleteFood = async (req: Request, res: Response) => {
     });
     if (!dbUser || food.publisherId !== dbUser.id) {
       return res.status(403).json({
-        message: '无权限删除该食物（仅发布者可删除）',
+        message: 'No permission to delete this food (only publisher can delete)',
         errorCode: 'food/forbidden-delete'
       });
     }
@@ -204,7 +207,7 @@ export const deleteFood = async (req: Request, res: Response) => {
           id: generateId(),
           userId: food.Claim.claimantId,
           type: 'FOOD_DELETED',
-          content: `您认领的食物 "${food.title}" 已被发布者删除。`,
+          content: `The food "${food.title}" you claimed has been deleted by the publisher.`,
           updatedAt: new Date(),
         }
       });
@@ -221,14 +224,14 @@ export const deleteFood = async (req: Request, res: Response) => {
     });
 
     return res.status(200).json({
-      message: '食物删除成功',
+      message: 'Food deleted successfully',
       foodId: foodId
     });
 
   } catch (error: any) {
-    console.error('删除食物失败：', error);
+    console.error('Delete food failed:', error);
     return res.status(500).json({
-      message: '删除失败',
+      message: 'Delete failed',
       errorCode: 'food/delete-failed',
       error: error.message
     });
@@ -236,27 +239,28 @@ export const deleteFood = async (req: Request, res: Response) => {
 };
 
 /**
- * 获取食物列表接口（支持筛选：校区、状态、过敏原、质量、分享地址、关键词）
+ * 获取食物列表接口（支持筛选：校区、状态、过敏原、质量、分享地址、关键词、类别）
  */
 export const getFoodList = async (req: Request, res: Response) => {
   try {
-    const { status, allergens, quality, campus, location, keyword } = req.query;
+    const { status, allergens, quality, campus, location, keyword, category } = req.query;
 
     const where: any = {};
     if (status) where.status = status;
     if (allergens) {
-  try {
-    const allergenList = (allergens as string).split(',').filter(a => a.trim());
-    if (allergenList.length > 0) {
-      where.allergens = { hasSome: allergenList };
+      try {
+        const allergenList = (allergens as string).split(',').filter(a => a.trim());
+        if (allergenList.length > 0) {
+          where.allergens = { hasSome: allergenList };
+        }
+      } catch (e) {
+        console.error('Allergens query parameter error:', e);
+      }
     }
-  } catch (e) {
-    console.error('过敏原查询参数错误:', e);
-  }
-}
     if (quality) where.quality = quality;
     if (campus) where.campus = campus as string;
     if (location) where.location = { contains: location as string };
+    if (category) where.category = category as string; // 新增类别筛选
     if (keyword) {
       where.OR = [
         { title: { contains: keyword as string } },
@@ -274,15 +278,14 @@ export const getFoodList = async (req: Request, res: Response) => {
     });
 
     return res.status(200).json({
-      message: '获取列表成功',
-      total: foods.length,
+      message: 'Get list successfully',
       foods: foods
     });
 
   } catch (error: any) {
-    console.error('获取食物列表失败：', error);
+    console.error('Get food list failed:', error);
     return res.status(500).json({
-      message: '获取列表失败',
+      message: 'Failed to get list',
       errorCode: 'food/list-failed',
       error: error.message
     });
@@ -297,7 +300,7 @@ export const claimFood = async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) {
       return res.status(401).json({
-        message: '未登录',
+        message: 'Not logged in',
         errorCode: 'auth/unauthorized'
       });
     }
@@ -305,7 +308,7 @@ export const claimFood = async (req: Request, res: Response) => {
     const { foodId } = req.body;
     if (!foodId) {
       return res.status(400).json({
-        message: '食物ID为必填项',
+        message: 'Food ID is required',
         errorCode: 'food/missing-food-id'
       });
     }
@@ -320,7 +323,7 @@ export const claimFood = async (req: Request, res: Response) => {
     });
     if (!food) {
       return res.status(404).json({
-        message: '食物不存在',
+        message: 'Food not found',
         errorCode: 'food/not-found'
       });
     }
@@ -328,7 +331,7 @@ export const claimFood = async (req: Request, res: Response) => {
     // 检查食物是否已被认领
     if (food.status !== 'AVAILABLE' || food.Claim) {
       return res.status(400).json({
-        message: '该食物已被认领',
+        message: 'This food has already been claimed',
         errorCode: 'food/already-claimed'
       });
     }
@@ -351,7 +354,7 @@ export const claimFood = async (req: Request, res: Response) => {
     // 禁止发布者认领自己的食物
     if (food.publisherId === claimant.id) {
       return res.status(403).json({
-        message: '禁止认领自己发布的食物',
+        message: 'Cannot claim your own food',
         errorCode: 'food/forbid-claim-own-food'
       });
     }
@@ -382,21 +385,21 @@ export const claimFood = async (req: Request, res: Response) => {
         id: generateId(),
         userId: food.publisherId,
         type: 'CLAIM',
-        content: `您的食物 "${food.title}" 被用户 ${claimant.email} 认领，请及时确认。`,
+        content: `Your food "${food.title}" has been claimed by user ${claimant.email}, please confirm.`,
         updatedAt: new Date(),
       }
     });
 
     return res.status(200).json({
-      message: '认领成功，等待发布者确认',
+      message: 'Claim successful, waiting for publisher confirmation',
       claimId: claim.id,
       foodStatus: 'CLAIMED'
     });
 
   } catch (error: any) {
-    console.error('认领食物失败：', error);
+    console.error('Claim food failed:', error);
     return res.status(500).json({
-      message: '认领失败',
+      message: 'Claim failed',
       errorCode: 'food/claim-failed',
       error: error.message
     });
@@ -411,7 +414,7 @@ export const confirmClaim = async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) {
       return res.status(401).json({
-        message: '未登录',
+        message: 'Not logged in',
         errorCode: 'auth/unauthorized'
       });
     }
@@ -419,7 +422,7 @@ export const confirmClaim = async (req: Request, res: Response) => {
     const { claimId } = req.body;
     if (!claimId) {
       return res.status(400).json({
-        message: '认领记录ID为必填项',
+        message: 'Claim ID is required',
         errorCode: 'food/missing-claim-id'
       });
     }
@@ -433,7 +436,7 @@ export const confirmClaim = async (req: Request, res: Response) => {
     });
     if (!claim) {
       return res.status(404).json({
-        message: '认领记录不存在',
+        message: 'Claim record not found',
         errorCode: 'food/claim-not-found'
       });
     }
@@ -441,7 +444,7 @@ export const confirmClaim = async (req: Request, res: Response) => {
     // 验证当前用户是否为食物的发布者
     if (claim.Food.User.firebaseUid !== user.uid) {
       return res.status(403).json({
-        message: '无权限确认该认领',
+        message: 'No permission to confirm this claim',
         errorCode: 'food/forbidden-confirm'
       });
     }
@@ -468,21 +471,21 @@ export const confirmClaim = async (req: Request, res: Response) => {
         id: generateId(),
         userId: claim.claimantId,
         type: 'CLAIM_CONFIRMED',
-        content: `您认领的食物 "${claim.Food.title}" 已被发布者确认，可以取餐了。`,
+        content: `The food "${claim.Food.title}" you claimed has been confirmed by the publisher. You can pick it up now.`,
         updatedAt: new Date(),
       }
     });
 
     return res.status(200).json({
-      message: '认领确认成功',
+      message: 'Claim confirmed successfully',
       claimStatus: 'ACCEPTED',
       foodStatus: 'COMPLETED'
     });
 
   } catch (error: any) {
-    console.error('确认认领失败：', error);
+    console.error('Confirm claim failed:', error);
     return res.status(500).json({
-      message: '确认认领失败',
+      message: 'Failed to confirm claim',
       errorCode: 'food/confirm-failed',
       error: error.message
     });
@@ -497,7 +500,7 @@ export const getMyPublishedFoods = async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) {
       return res.status(401).json({
-        message: '未登录',
+        message: 'Not logged in',
         errorCode: 'auth/unauthorized'
       });
     }
@@ -507,7 +510,7 @@ export const getMyPublishedFoods = async (req: Request, res: Response) => {
     });
     if (!dbUser) {
       return res.status(404).json({
-        message: '用户不存在',
+        message: 'User not found',
         errorCode: 'auth/user-not-found'
       });
     }
@@ -521,13 +524,13 @@ export const getMyPublishedFoods = async (req: Request, res: Response) => {
     });
 
     return res.status(200).json({
-      message: '获取我的发布成功',
+      message: 'Get my published foods successfully',
       foods
     });
   } catch (error: any) {
-    console.error('获取我的发布失败：', error);
+    console.error('Get my published foods failed:', error);
     return res.status(500).json({
-      message: '获取失败',
+      message: 'Failed to get',
       errorCode: 'food/my-publish-failed',
       error: error.message
     });

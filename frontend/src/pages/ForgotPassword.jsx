@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../utils/axios';
 
 const ForgotPassword = () => {
-  const [step, setStep] = useState(1); // 1: 输入邮箱, 2: 输入验证码和新密码
+  const [step, setStep] = useState(1); // 1: enter email, 2: enter code and new password
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -16,10 +16,10 @@ const ForgotPassword = () => {
     setLoading(true);
     try {
       await api.post('/api/users/forgot-password', { email });
-      setMessage('验证码已发送到您的邮箱（模拟），请查收。');
+      setMessage('Verification code has been sent to your email (simulated). Please check.');
       setStep(2);
     } catch (err) {
-      alert(err.response?.data?.message || '发送失败');
+      alert(err.response?.data?.message || 'Failed to send code');
     } finally {
       setLoading(false);
     }
@@ -28,7 +28,7 @@ const ForgotPassword = () => {
   const handleReset = async (e) => {
     e.preventDefault();
     if (newPassword !== confirmNewPassword) {
-      alert('两次密码不一致');
+      alert('Passwords do not match');
       return;
     }
     setLoading(true);
@@ -39,10 +39,10 @@ const ForgotPassword = () => {
         newPassword,
         confirmNewPassword,
       });
-      alert('密码重置成功！请用新密码登录。');
+      alert('Password reset successful! Please login with your new password.');
       window.location.href = '/login';
     } catch (err) {
-      alert(err.response?.data?.message || '重置失败');
+      alert(err.response?.data?.message || 'Reset failed');
     } finally {
       setLoading(false);
     }
@@ -50,11 +50,11 @@ const ForgotPassword = () => {
 
   return (
     <div style={{ width: '400px', margin: '100px auto' }}>
-      <h2 style={{ textAlign: 'center' }}>忘记密码</h2>
+      <h2 style={{ textAlign: 'center' }}>Forgot Password</h2>
       {step === 1 ? (
         <form onSubmit={handleSendCode}>
           <div style={{ marginBottom: '15px' }}>
-            <label>邮箱</label>
+            <label>Email</label>
             <input
               type="email"
               value={email}
@@ -76,14 +76,14 @@ const ForgotPassword = () => {
               cursor: 'pointer',
             }}
           >
-            {loading ? '发送中...' : '发送验证码'}
+            {loading ? 'Sending...' : 'Send Verification Code'}
           </button>
           {message && <p style={{ color: 'green', marginTop: '10px' }}>{message}</p>}
         </form>
       ) : (
         <form onSubmit={handleReset}>
           <div style={{ marginBottom: '15px' }}>
-            <label>验证码</label>
+            <label>Verification Code</label>
             <input
               type="text"
               value={code}
@@ -93,7 +93,7 @@ const ForgotPassword = () => {
             />
           </div>
           <div style={{ marginBottom: '15px' }}>
-            <label>新密码</label>
+            <label>New Password</label>
             <input
               type="password"
               value={newPassword}
@@ -103,7 +103,7 @@ const ForgotPassword = () => {
             />
           </div>
           <div style={{ marginBottom: '15px' }}>
-            <label>确认新密码</label>
+            <label>Confirm New Password</label>
             <input
               type="password"
               value={confirmNewPassword}
@@ -125,12 +125,12 @@ const ForgotPassword = () => {
               cursor: 'pointer',
             }}
           >
-            {loading ? '重置中...' : '重置密码'}
+            {loading ? 'Resetting...' : 'Reset Password'}
           </button>
         </form>
       )}
       <p style={{ textAlign: 'center', marginTop: '10px' }}>
-        <Link to="/login" style={{ color: '#0088ff' }}>返回登录</Link>
+        <Link to="/login" style={{ color: '#0088ff' }}>Back to Login</Link>
       </p>
     </div>
   );

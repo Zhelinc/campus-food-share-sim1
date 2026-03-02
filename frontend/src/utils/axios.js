@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+const baseURL = import.meta.env.PROD
+  ? 'https://campus-food-share-sim1.zeabur.app' // 生产环境
+  : 'http://localhost:8080'; // 开发环境
+
 const api = axios.create({
-  baseURL: 'http://localhost:8080', // 后端地址不变
+  baseURL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
