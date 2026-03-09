@@ -1,7 +1,6 @@
-// frontend/src/pages/Home.jsx
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../utils/axios';
+import api from '../utils/axios'; 
 import { getUserInfo } from '../api/user';
 import { getFoodList, claimFood, updateFood, deleteFood, publishFood } from '../api/food';
 
@@ -14,14 +13,12 @@ const Home = () => {
     keyword: ''
   });
 
-  // 修改弹窗
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentEditFood, setCurrentEditFood] = useState(null);
   const [editFoodData, setEditFoodData] = useState({
     title: '', description: '', location: '', quality: '', category: ''
   });
 
-  // 发布弹窗
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [publishFoodData, setPublishFoodData] = useState({
     title: '', description: '', campus: '', location: '', quality: '', category: '', allergens: '', imageUrl: ''
@@ -152,20 +149,13 @@ const Home = () => {
     const formData = new FormData();
     formData.append('image', file);
     try {
-      const res = await fetch('http://localhost:8080/api/upload', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-        body: formData
+      const response = await api.post('/api/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
-      const data = await res.json();
-      if (res.ok) {
-        setPublishFoodData({ ...publishFoodData, imageUrl: data.url });
-        alert('Image uploaded successfully');
-      } else {
-        alert('Upload failed: ' + data.message);
-      }
+      setPublishFoodData({ ...publishFoodData, imageUrl: response.url });
+      alert('Image uploaded successfully');
     } catch (err) {
-      alert('Upload failed: ' + err.message);
+      alert('Upload failed: ' + (err.response?.data?.message || err.message));
     } finally {
       setUploading(false);
     }
