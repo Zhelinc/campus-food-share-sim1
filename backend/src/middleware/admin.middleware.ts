@@ -12,12 +12,12 @@ export const verifyAdmin = async (req: Request, res: Response, next: NextFunctio
     }
 
     const dbUser = await prisma.user.findUnique({
-      where: { firebaseUid: user.uid }
+      where: { id: user.userId }
     });
 
     if (!dbUser || dbUser.role !== 'admin') {
       return res.status(403).json({
-        message: 'Admin permission required',
+        message: 'Admin privileges required',
         errorCode: 'auth/forbidden'
       });
     }
@@ -25,7 +25,7 @@ export const verifyAdmin = async (req: Request, res: Response, next: NextFunctio
     next();
   } catch (error: any) {
     return res.status(500).json({
-      message: 'Permission verification failed',
+      message: 'Admin verification failed',
       error: error.message
     });
   }

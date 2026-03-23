@@ -20,7 +20,7 @@
     // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-
+"typeRoots": ["./node_modules/@types", "./src/types"],
     // Recommended Options
     "strict": true,
     "skipLibCheck": true

@@ -8,7 +8,7 @@ const AdminFoods = () => {
     title: '',
     description: '',
     location: '',
-    quality: '',
+    weight: '',
     status: 'AVAILABLE'
   });
 
@@ -31,7 +31,7 @@ const AdminFoods = () => {
       title: food.title,
       description: food.description || '',
       location: food.location,
-      quality: food.quality,
+      weight: food.weight,
       status: food.status
     });
   };
@@ -92,9 +92,9 @@ const AdminFoods = () => {
           </div>
           <div style={{ marginBottom: '10px' }}>
             <input
-              placeholder="Quality"
-              value={formData.quality}
-              onChange={e => setFormData({ ...formData, quality: e.target.value })}
+              placeholder="weight"
+              value={formData.weight}
+              onChange={e => setFormData({ ...formData, weight: e.target.value })}
               style={{ width: '100%', padding: '8px' }}
             />
           </div>

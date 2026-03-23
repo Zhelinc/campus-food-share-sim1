@@ -16,32 +16,52 @@ export const publishFood = async (req: Request, res: Response) => {
       });
     }
 
-    const { title, description, allergens, campus, location, quality, imageUrl, category } = req.body;
+    const {
+      title,
+      description,
+      allergens,
+      campus,
+      location,
+      weight,
+      expiryDays,
+      imageUrl,
+      category,
+    } = req.body;
 
-    // 校验必填项
-    if (!title || !description || !campus || !location || !quality) {
+    if (!title || !description || !campus || !location || !weight || !expiryDays) {
       return res.status(400).json({
-        message: 'Title, description, campus, location, quality are required',
+        message: 'Title, description, campus, location, weight and expiryDays are required',
         errorCode: 'food/missing-params'
       });
     }
 
-    // 查找/创建用户
+    const days = parseInt(expiryDays, 10);
+    if (isNaN(days) || days <= 0) {
+      return res.status(400).json({
+        message: 'expiryDays must be a positive integer',
+        errorCode: 'food/invalid-expiry-days'
+      });
+    }
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + days);
+
+    // 查找用户（使用 userId）
     let dbUser = await prisma.user.findUnique({
-      where: { firebaseUid: user.uid }
+      where: { id: user.userId }
     });
     if (!dbUser) {
       dbUser = await prisma.user.create({
         data: {
-          id: generateId(),
-          firebaseUid: user.uid,
-          email: user.email || `${user.uid}@mock.com`,
+          id: user.userId,
+          email: user.email,
+          role: user.role || 'user',
+          emailVerified: true,
           updatedAt: new Date(),
         }
       });
     }
 
-    // 创建食物记录
     const food = await prisma.food.create({
       data: {
         id: generateId(),
@@ -50,14 +70,16 @@ export const publishFood = async (req: Request, res: Response) => {
         allergens: allergens || [],
         campus,
         location,
-        quality,
-        category: category || null, // 保存 category
+        weight,
+        expiryDays: days,
+        expiresAt,
+        category: category || null,
         imageUrl: imageUrl || null,
         publisherId: dbUser.id,
         updatedAt: new Date(),
       },
       include: {
-        User: { select: { email: true } }
+        User: { select: { email: true } }  // 注意：大写 User
       }
     });
 
@@ -90,8 +112,8 @@ export const editFood = async (req: Request, res: Response) => {
       });
     }
 
-    const foodId = req.params.foodId as string; // 从 URL 参数获取
-    const { title, description, allergens, campus, location, quality, imageUrl, status, category } = req.body;
+    const foodId = req.params.foodId as string;
+    const { title, description, allergens, campus, location, weight, imageUrl, status, category } = req.body;
 
     if (!foodId) {
       return res.status(400).json({
@@ -100,10 +122,9 @@ export const editFood = async (req: Request, res: Response) => {
       });
     }
 
-    // 查找食物，并包含发布者信息
     const food = await prisma.food.findUnique({
       where: { id: foodId },
-      include: { User: true }
+      include: { User: true }  // 大写 User
     });
     if (!food) {
       return res.status(404).json({
@@ -113,37 +134,33 @@ export const editFood = async (req: Request, res: Response) => {
     }
 
     // 验证发布者身份
-    const dbUser = await prisma.user.findUnique({
-      where: { firebaseUid: user.uid }
-    });
-    if (!dbUser || food.publisherId !== dbUser.id) {
+    if (food.publisherId !== user.userId) {
       return res.status(403).json({
-        message: 'No permission to edit this food (only publisher can edit)',
+        message: 'You are not the publisher of this food',
         errorCode: 'food/forbidden-edit'
       });
     }
 
-    // 构建更新数据（只更新传入的字段）
     const updateData: any = {};
     if (title) updateData.title = title;
     if (description) updateData.description = description;
     if (allergens) updateData.allergens = allergens;
     if (campus) updateData.campus = campus;
     if (location) updateData.location = location;
-    if (quality) updateData.quality = quality;
+    if (weight) updateData.weight = weight;
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
     if (status) updateData.status = status;
-    if (category !== undefined) updateData.category = category; // 更新 category
+    if (category !== undefined) updateData.category = category;
     updateData.updatedAt = new Date();
 
     const updatedFood = await prisma.food.update({
       where: { id: foodId },
       data: updateData,
-      include: { User: { select: { email: true } } }
+      include: { User: { select: { email: true } } }  // 大写 User
     });
 
     return res.status(200).json({
-      message: 'Food edited successfully',
+      message: 'Food updated successfully',
       food: updatedFood
     });
 
@@ -170,7 +187,7 @@ export const deleteFood = async (req: Request, res: Response) => {
       });
     }
 
-    const foodId = req.params.foodId as string; // 从 URL 参数获取
+    const foodId = req.params.foodId as string;
     if (!foodId) {
       return res.status(400).json({
         message: 'Food ID is required',
@@ -178,10 +195,9 @@ export const deleteFood = async (req: Request, res: Response) => {
       });
     }
 
-    // 查找食物，包含发布者和认领信息
     const food = await prisma.food.findUnique({
       where: { id: foodId },
-      include: { User: true, Claim: true }
+      include: { User: true, Claim: true }  // 大写 User, Claim
     });
     if (!food) {
       return res.status(404).json({
@@ -190,17 +206,15 @@ export const deleteFood = async (req: Request, res: Response) => {
       });
     }
 
-    const dbUser = await prisma.user.findUnique({
-      where: { firebaseUid: user.uid }
-    });
-    if (!dbUser || food.publisherId !== dbUser.id) {
+    // 验证发布者身份
+    if (food.publisherId !== user.userId) {
       return res.status(403).json({
-        message: 'No permission to delete this food (only publisher can delete)',
+        message: 'You are not the publisher of this food',
         errorCode: 'food/forbidden-delete'
       });
     }
 
-    // 如果该食物已被认领，给认领者发送通知
+    // 如果食物已被认领，给认领者发送通知
     if (food.Claim) {
       await prisma.notification.create({
         data: {
@@ -213,12 +227,10 @@ export const deleteFood = async (req: Request, res: Response) => {
       });
     }
 
-    // 先删除关联的认领记录
     await prisma.claim.deleteMany({
       where: { foodId: foodId }
     });
 
-    // 再删除食物
     await prisma.food.delete({
       where: { id: foodId }
     });
@@ -239,40 +251,46 @@ export const deleteFood = async (req: Request, res: Response) => {
 };
 
 /**
- * 获取食物列表接口（支持筛选：校区、状态、过敏原、质量、分享地址、关键词、类别）
+ * 获取食物列表（公开接口，无需登录）
+ * 过滤：status = AVAILABLE，未过期（expiresAt > now 或 expiresAt 为 null）
+ * 支持模糊搜索（不区分大小写）
  */
 export const getFoodList = async (req: Request, res: Response) => {
   try {
-    const { status, allergens, quality, campus, location, keyword, category } = req.query;
+    const { status, allergens, campus, location, keyword, category } = req.query;
 
-    const where: any = {};
-    if (status) where.status = status;
+    const where: any = {
+      status: 'AVAILABLE',
+      OR: [
+        { expiresAt: { gt: new Date() } },
+        { expiresAt: null }
+      ]
+    };
+
     if (allergens) {
-      try {
-        const allergenList = (allergens as string).split(',').filter(a => a.trim());
-        if (allergenList.length > 0) {
-          where.allergens = { hasSome: allergenList };
-        }
-      } catch (e) {
-        console.error('Allergens query parameter error:', e);
+      const allergenList = (allergens as string).split(',').filter(a => a.trim());
+      if (allergenList.length > 0) {
+        where.allergens = { hasSome: allergenList };
       }
     }
-    if (quality) where.quality = quality;
     if (campus) where.campus = campus as string;
     if (location) where.location = { contains: location as string };
-    if (category) where.category = category as string; // 新增类别筛选
+if (category) {
+  where.category = { equals: category as string, mode: 'insensitive' };
+}
+
     if (keyword) {
       where.OR = [
-        { title: { contains: keyword as string } },
-        { description: { contains: keyword as string } }
+        { title: { contains: keyword as string, mode: 'insensitive' } },
+        { description: { contains: keyword as string, mode: 'insensitive' } }
       ];
     }
 
     const foods = await prisma.food.findMany({
       where,
       include: {
-        User: { select: { email: true } },          // 发布者信息
-        Claim: { select: { User: { select: { email: true } } } } // 认领者信息
+        User: { select: { email: true } },                     // 大写 User
+        Claim: { select: { Claimant: { select: { email: true } } } }  // 注意：Claim 模型中的关系名 Claimant（大写）
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -293,7 +311,7 @@ export const getFoodList = async (req: Request, res: Response) => {
 };
 
 /**
- * 认领食物接口（禁止发布者认领自己的食物）
+ * 认领食物接口
  */
 export const claimFood = async (req: Request, res: Response) => {
   try {
@@ -305,7 +323,7 @@ export const claimFood = async (req: Request, res: Response) => {
       });
     }
 
-    const { foodId } = req.body;
+    const { foodId, pickupTime } = req.body;
     if (!foodId) {
       return res.status(400).json({
         message: 'Food ID is required',
@@ -313,13 +331,9 @@ export const claimFood = async (req: Request, res: Response) => {
       });
     }
 
-    // 查找食物，关联发布者和可能的认领记录
     const food = await prisma.food.findUnique({
       where: { id: foodId },
-      include: {
-        User: true,   // 发布者
-        Claim: true   // 认领记录（一对一）
-      }
+      include: { User: true, Claim: true }  // 大写 User, Claim
     });
     if (!food) {
       return res.status(404).json({
@@ -328,70 +342,85 @@ export const claimFood = async (req: Request, res: Response) => {
       });
     }
 
-    // 检查食物是否已被认领
+    // 检查食物是否可认领
     if (food.status !== 'AVAILABLE' || food.Claim) {
       return res.status(400).json({
-        message: 'This food has already been claimed',
+        message: 'This food is already claimed',
         errorCode: 'food/already-claimed'
       });
     }
+    if (food.publisherId === user.userId) {
+      return res.status(403).json({
+        message: 'You cannot claim your own food',
+        errorCode: 'food/forbid-claim-own-food'
+      });
+    }
 
-    // 查找/创建认领者
-    let claimant = await prisma.user.findUnique({
-      where: { firebaseUid: user.uid }
+    // 处理 pickupTime（可选，新功能）
+    let validatedPickupTime: Date | null = null;
+    let isNewFlow = false;
+    if (pickupTime !== undefined && pickupTime !== null && pickupTime !== '') {
+      const timestamp = Date.parse(pickupTime);
+      if (isNaN(timestamp)) {
+        return res.status(400).json({
+          message: 'Invalid pickup time format, expected ISO 8601 string',
+          errorCode: 'food/invalid-pickup-time'
+        });
+      }
+      validatedPickupTime = new Date(timestamp);
+      isNewFlow = true;
+    }
+
+    // 创建认领记录
+    const claimData: any = {
+      id: generateId(),
+      foodId: food.id,
+      claimantId: user.userId,
+      status: 'PENDING',
+      updatedAt: new Date(),
+    };
+    if (isNewFlow && validatedPickupTime) {
+      claimData.pickupTime = validatedPickupTime;
+    }
+
+    const claim = await prisma.claim.create({ data: claimData });
+
+    // 更新食物状态为 CLAIMED
+    await prisma.food.update({
+      where: { id: foodId },
+      data: { status: 'CLAIMED', updatedAt: new Date() }
     });
-    if (!claimant) {
-      claimant = await prisma.user.create({
+
+    // 发送通知给发布者
+    if (isNewFlow) {
+      // 新流程：包含期望时间
+      const content = `${user.email} wants to claim your food "${food.title}". Expected pickup time: ${validatedPickupTime!.toISOString()}`;
+      await prisma.notification.create({
         data: {
           id: generateId(),
-          firebaseUid: user.uid,
-          email: user.email || `${user.uid}@mock.com`,
+          userId: food.publisherId,
+          claimId: claim.id,
+          type: 'CLAIM_REQUEST',
+          content,
+          updatedAt: new Date(),
+        }
+      });
+    } else {
+      // 旧流程
+      await prisma.notification.create({
+        data: {
+          id: generateId(),
+          userId: food.publisherId,
+          claimId: claim.id,
+          type: 'CLAIM',
+          content: `Your food "${food.title}" has been claimed by ${user.email}. Please confirm.`,
           updatedAt: new Date(),
         }
       });
     }
 
-    // 禁止发布者认领自己的食物
-    if (food.publisherId === claimant.id) {
-      return res.status(403).json({
-        message: 'Cannot claim your own food',
-        errorCode: 'food/forbid-claim-own-food'
-      });
-    }
-
-    // 创建认领记录
-    const claim = await prisma.claim.create({
-      data: {
-        id: generateId(),
-        foodId: food.id,
-        claimantId: claimant.id,
-        status: 'PENDING',
-        updatedAt: new Date(),
-      }
-    });
-
-    // 更新食物状态为 CLAIMED
-    await prisma.food.update({
-      where: { id: foodId },
-      data: {
-        status: 'CLAIMED',
-        updatedAt: new Date(),
-      }
-    });
-
-    // 为发布者创建通知
-    await prisma.notification.create({
-      data: {
-        id: generateId(),
-        userId: food.publisherId,
-        type: 'CLAIM',
-        content: `Your food "${food.title}" has been claimed by user ${claimant.email}, please confirm.`,
-        updatedAt: new Date(),
-      }
-    });
-
     return res.status(200).json({
-      message: 'Claim successful, waiting for publisher confirmation',
+      message: isNewFlow ? 'Claim request sent' : 'Claimed successfully, waiting for publisher confirmation',
       claimId: claim.id,
       foodStatus: 'CLAIMED'
     });
@@ -427,29 +456,27 @@ export const confirmClaim = async (req: Request, res: Response) => {
       });
     }
 
-    // 查找认领记录，包含关联的食物和食物的发布者
     const claim = await prisma.claim.findUnique({
       where: { id: claimId },
       include: {
-        Food: { include: { User: true } } // 食物及其发布者
+        Food: { include: { User: true } }  // 大写 Food, User
       }
     });
     if (!claim) {
       return res.status(404).json({
-        message: 'Claim record not found',
+        message: 'Claim not found',
         errorCode: 'food/claim-not-found'
       });
     }
 
     // 验证当前用户是否为食物的发布者
-    if (claim.Food.User.firebaseUid !== user.uid) {
+    if (claim.Food.publisherId !== user.userId) {
       return res.status(403).json({
-        message: 'No permission to confirm this claim',
+        message: 'You are not the publisher of this food',
         errorCode: 'food/forbidden-confirm'
       });
     }
 
-    // 更新认领状态和食物状态
     await prisma.claim.update({
       where: { id: claimId },
       data: {
@@ -457,6 +484,7 @@ export const confirmClaim = async (req: Request, res: Response) => {
         updatedAt: new Date(),
       }
     });
+
     await prisma.food.update({
       where: { id: claim.foodId },
       data: {
@@ -465,13 +493,12 @@ export const confirmClaim = async (req: Request, res: Response) => {
       }
     });
 
-    // 为认领者创建通知
     await prisma.notification.create({
       data: {
         id: generateId(),
         userId: claim.claimantId,
         type: 'CLAIM_CONFIRMED',
-        content: `The food "${claim.Food.title}" you claimed has been confirmed by the publisher. You can pick it up now.`,
+        content: `Your claim for "${claim.Food.title}" has been confirmed. You can now pick up the food.`,
         updatedAt: new Date(),
       }
     });
@@ -485,7 +512,7 @@ export const confirmClaim = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Confirm claim failed:', error);
     return res.status(500).json({
-      message: 'Failed to confirm claim',
+      message: 'Confirm claim failed',
       errorCode: 'food/confirm-failed',
       error: error.message
     });
@@ -505,32 +532,22 @@ export const getMyPublishedFoods = async (req: Request, res: Response) => {
       });
     }
 
-    const dbUser = await prisma.user.findUnique({
-      where: { firebaseUid: user.uid }
-    });
-    if (!dbUser) {
-      return res.status(404).json({
-        message: 'User not found',
-        errorCode: 'auth/user-not-found'
-      });
-    }
-
     const foods = await prisma.food.findMany({
-      where: { publisherId: dbUser.id },
+      where: { publisherId: user.userId },
       include: {
-        User: { select: { email: true } }
+        User: { select: { email: true } }  // 大写 User
       },
       orderBy: { createdAt: 'desc' }
     });
 
     return res.status(200).json({
-      message: 'Get my published foods successfully',
+      message: 'My publications retrieved successfully',
       foods
     });
   } catch (error: any) {
-    console.error('Get my published foods failed:', error);
+    console.error('Get my publications failed:', error);
     return res.status(500).json({
-      message: 'Failed to get',
+      message: 'Failed to retrieve my publications',
       errorCode: 'food/my-publish-failed',
       error: error.message
     });

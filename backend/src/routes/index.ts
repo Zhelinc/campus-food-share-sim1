@@ -4,7 +4,7 @@ import foodRoutes from './food.routes';
 import uploadRoutes from './upload.routes';
 import adminRoutes from './admin.routes';
 import notificationRoutes from './notification.routes'; // 新增
-
+import claimRoutes from './claim.routes';
 const router = Router();
 
 // 挂载用户路由
@@ -22,4 +22,5 @@ router.use('/admin', adminRoutes);
 // 挂载通知路由
 router.use('/notifications', notificationRoutes);
 
+router.use('/claim', claimRoutes);
 export default router;

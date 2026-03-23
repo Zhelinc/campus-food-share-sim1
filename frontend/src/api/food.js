@@ -6,8 +6,8 @@ export const getFoodList = (filters = {}) => {
 };
 
 // 2. 认领食物
-export const claimFood = (foodId) => {
-  return api.post('/api/food/claim', { foodId });
+export const claimFood = (foodId, pickupTime) => {
+  return api.post('/api/food/claim', { foodId, pickupTime });
 };
 
 // 3. 发布食物

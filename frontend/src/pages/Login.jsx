@@ -10,30 +10,36 @@ const Login = () => {
   const [role, setRole] = useState('user');
   const [invitationCode, setInvitationCode] = useState('');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+ const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (isRegister && password !== confirmPassword) {
-      alert('Passwords do not match');
-      return;
-    }
+  if (isRegister && password !== confirmPassword) {
+    alert('Passwords do not match');
+    return;
+  }
 
-    try {
-      if (isRegister) {
-        const res = await register(email, password, confirmPassword, role, invitationCode);
-        alert('Registration successful! You will be logged in automatically.');
-        localStorage.setItem('token', res.token);
-        window.location.href = '/';
-      } else {
-        const res = await login(email, password);
-        alert('Login successful!');
-        localStorage.setItem('token', res.token);
-        window.location.href = '/';
-      }
-    } catch (err) {
-      alert(err.response?.data?.message || 'Operation failed, please try again');
+  try {
+    if (isRegister) {
+      // 注册成功后，不再存储 token 和自动跳转
+      await register(email, password, confirmPassword, role, invitationCode);
+      alert('Registration successful! Please check your email to verify your account.');
+      // 可选：清空表单
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+      setInvitationCode('');
+      // 切换到登录模式
+      setIsRegister(false);
+    } else {
+      const res = await login(email, password);
+      alert('Login successful!');
+      localStorage.setItem('token', res.token);
+      window.location.href = '/';
     }
-  };
+  } catch (err) {
+    alert(err.response?.data?.message || 'Operation failed, please try again');
+  }
+};
 
   return (
     <div style={{ width: '400px', margin: '100px auto' }}>

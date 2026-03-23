@@ -9,7 +9,7 @@ import AdminUsers from './pages/AdminUsers';
 import MyAccount from './pages/MyAccount';
 import MyMessages from './pages/MyMessages';
 import ForgotPassword from './pages/ForgotPassword';
-
+import VerifyEmail from './pages/VerifyEmail';
 function App() {
   return (
     <BrowserRouter>
@@ -21,6 +21,7 @@ function App() {
         <Route path="/my-account" element={<MyAccount />} />
         <Route path="/my-messages" element={<MyMessages />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         {/* 管理后台嵌套路由 */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminFoods />} />          {/* /admin 默认显示食物管理 */}

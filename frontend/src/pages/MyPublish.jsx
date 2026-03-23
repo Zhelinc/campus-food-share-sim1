@@ -12,7 +12,7 @@ const MyPublish = () => {
     title: '',
     description: '',
     location: '',
-    quality: '',
+    weight: '',
     category: ''
   });
 
@@ -49,7 +49,7 @@ const MyPublish = () => {
       title: food.title,
       description: food.description || '',
       location: food.location,
-      quality: food.quality,
+      weight: food.weight,
       category: food.category
     });
     setShowEditModal(true);
@@ -113,7 +113,7 @@ const MyPublish = () => {
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '18px' }}>{food.title}</h4>
                 <p style={{ margin: '5px 0', color: '#666' }}>Description: {food.description || 'None'}</p>
                 <p style={{ margin: '5px 0', color: '#666' }}>Location: {food.location}</p>
-                <p style={{ margin: '5px 0', color: '#666' }}>Quality: {food.quality}</p>
+                <p style={{ margin: '5px 0', color: '#666' }}>weight: {food.weight}</p>
                 <p style={{ margin: '5px 0', color: '#666' }}>Category: {food.category}</p>
                 <p style={{ 
                   margin: '5px 0', 
@@ -208,11 +208,11 @@ const MyPublish = () => {
               />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px' }}>Quality:</label>
+              <label style={{ display: 'block', marginBottom: '5px' }}>weight:</label>
               <input
                 type="text"
-                value={editFoodData.quality}
-                onChange={(e) => setEditFoodData({ ...editFoodData, quality: e.target.value })}
+                value={editFoodData.weight}
+                onChange={(e) => setEditFoodData({ ...editFoodData, weight: e.target.value })}
                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
               />
             </div>

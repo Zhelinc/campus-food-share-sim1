@@ -1,58 +1,46 @@
+// backend/src/middleware/auth.middleware.ts
 import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 
-// 扩展Request类型，添加user属性
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        uid: string;
-        email: string;
-        emailVerified: boolean;
-      };
-    }
-  }
-}
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-/**
- * Token验证中间件（模拟Firebase Token验证）
- */
 export const verifyToken = (req: Request, res: Response, next: NextFunction) => {
+  // 1. 从 Authorization 头获取 token
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      message: 'No valid token provided',
+      errorCode: 'auth/missing-token'
+    });
+  }
+
+  // 2. 提取 token 部分
+  const token = authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({
+      message: 'Token format invalid',
+      errorCode: 'auth/invalid-token'
+    });
+  }
+
   try {
-    // 获取请求头中的Token
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        message: 'No valid token provided',
-        errorCode: 'auth/missing-token'
-      });
-    }
-
-    // 解析Token（模拟逻辑，真实环境替换为Firebase验证）
-    const token = authHeader.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({
-        message: 'Invalid token format',
-        errorCode: 'auth/invalid-token'
-      });
-    }
-
-    // 模拟从Token中提取用户信息（关联数据库的firebaseUid）
-    const firebaseUid = token.replace('mock-token-', '');
-    const mockUserInfo = {
-      uid: firebaseUid,
-      email: `${firebaseUid}@xxx.edu.cn`,
-      emailVerified: true
+    // 3. 验证 token
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      userId: string;
+      email: string;
+      role: string;
     };
 
-    // 将用户信息挂载到req上，供后续接口使用
-    req.user = mockUserInfo;
-    next();
+    // 4. 将用户信息挂载到 req 对象
+    req.user = decoded;
 
-  } catch (error: any) {
+    // 5. 继续执行下一个中间件/路由
+    next();
+  } catch (error) {
+    // token 无效或过期
     return res.status(401).json({
-      message: 'Token verification failed',
-      errorCode: 'auth/token-verify-failed',
-      error: error.message
+      message: 'Token is invalid or expired',
+      errorCode: 'auth/token-verification-failed'
     });
   }
 };

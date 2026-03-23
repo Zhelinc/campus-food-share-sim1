@@ -9,12 +9,14 @@ datasource db {
 
 model User {
   id          String   @id
-  firebaseUid String   @unique
   email       String   @unique
   password    String?  // 哈希密码
   createdAt   DateTime @default(now())
   updatedAt   DateTime
   role        String   @default("user")
+  emailVerified Boolean @default(false)
+
+  // 关系字段（大写，单数）
   Claim       Claim[]
   Food        Food[]
   Notification Notification[]
@@ -25,37 +27,65 @@ model Food {
   title       String
   description String
   allergens   String[]
-  campus      String   @default("伦敦")  // 新增校区
-  location    String                    // 分享地址
-  quality     String
+  campus      String   @default("London")
+  location    String
+  weight        String?   // 食物重量，例如 "500g"
+  expiryDays    Int?      // 保质期（天数）
+  expiresAt     DateTime? // 自动计算的过期时间
   imageUrl    String?
   status      String   @default("AVAILABLE")
   publisherId String
   createdAt   DateTime @default(now())
   updatedAt   DateTime
-  Claim       Claim?
   category    String?
-  User        User     @relation(fields: [publisherId], references: [id])
+  Claim       Claim?          // 一对一认领
+  User        User            @relation(fields: [publisherId], references: [id])
 }
 
 model Claim {
-  id         String   @id
-  foodId     String   @unique
+  id         String   @id @default(cuid())
+  foodId     String   @unique           // 唯一约束（只保留此处）
   claimantId String
-  status     String   @default("PENDING")
+  status     ClaimStatus @default(PENDING)
+  pickupTime  DateTime?
+  counterPickupTime DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime
-  User       User     @relation(fields: [claimantId], references: [id])
-  Food       Food     @relation(fields: [foodId], references: [id])
+  Claimant   User    @relation(fields: [claimantId], references: [id])
+  Food       Food    @relation(fields: [foodId], references: [id])
+  // 反向关系：一个认领可以有多条通知
+  Notification Notification[]
+}
+
+enum ClaimStatus {
+  PENDING
+  ACCEPTED
+  COUNTERED
+  REJECTED
 }
 
 model Notification {
-  id         String   @id @default(cuid())
-  userId     String
-  type       String   // 'CLAIM', 'CLAIM_CONFIRMED', 'FOOD_DELETED'
-  content    String
-  isRead     Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  user       User     @relation(fields: [userId], references: [id])
+  id        String   @id @default(cuid())
+  userId    String
+  claimId   String?
+  type      String
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关系字段
+  user    User    @relation(fields: [userId], references: [id])
+  Claim   Claim?  @relation(fields: [claimId], references: [id])
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("password_resets")
 }

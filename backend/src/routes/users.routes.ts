@@ -10,6 +10,8 @@ import {
 } from '../controllers/users.controller';
 import { verifyToken } from '../middleware/auth.middleware';
 
+import { verifyEmail } from '../controllers/users.controller';
+
 const router = Router();
 
 // 注册
@@ -30,4 +32,5 @@ router.post('/forgot-password', forgotPassword);
 // 重置密码
 router.post('/reset-password', resetPassword);
 
+router.get('/verify-email', verifyEmail);
 export default router;

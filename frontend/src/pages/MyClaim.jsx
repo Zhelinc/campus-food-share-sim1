@@ -61,7 +61,7 @@ const MyClaim = () => {
               <div style={{ padding: '15px' }}>
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '18px' }}>{food.title}</h4>
                 <p style={{ margin: '5px 0', color: '#666' }}>Location: {food.location || 'Unknown'}</p>
-                <p style={{ margin: '5px 0', color: '#666' }}>Quality: {food.quality || 'Unknown'}</p>
+                <p style={{ margin: '5px 0', color: '#666' }}>weight: {food.weight || 'Unknown'}</p>
                 <p style={{ 
                   margin: '5px 0', 
                   color: food.status === 'AVAILABLE' ? '#4caf50' : '#f44336' 

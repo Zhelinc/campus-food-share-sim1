@@ -1,13 +1,5 @@
-// backend/src/controllers/upload.controller.ts
 import { Request, Response } from 'express';
-import path from 'path';
-import fs from 'fs';
-
-// 确保上传目录存在
-const uploadDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+import { put } from '@vercel/blob';
 
 export const uploadImage = async (req: Request, res: Response) => {
   try {
@@ -15,18 +7,26 @@ export const uploadImage = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    // 生成可访问的URL（假设后端运行在 http://localhost:5000）
-    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    const file = req.file;
+    // 生成唯一文件名，避免覆盖（可使用时间戳+原始名）
+    const fileName = `${Date.now()}-${file.originalname}`;
 
+    // 上传到 Vercel Blob
+    const blob = await put(fileName, file.buffer, {
+      access: 'public',           // 公开访问
+      contentType: file.mimetype, // 保持 MIME 类型
+    });
+
+    // 返回文件的公网 URL
     return res.status(200).json({
       message: 'Upload successful',
-      url: fileUrl
+      url: blob.url,
     });
   } catch (error: any) {
     console.error('Upload failed:', error);
     return res.status(500).json({
       message: 'Upload failed',
-      error: error.message
+      error: error.message,
     });
   }
 };

@@ -86,7 +86,7 @@ export const getAllFoods = async (req: Request, res: Response) => {
     const foods = await prisma.food.findMany({
       include: {
         User: { select: { email: true } },
-        Claim: { include: { User: { select: { email: true } } } }
+        Claim: { include: { Claimant: { select: { email: true } } } }
       },
       orderBy: { createdAt: 'desc' }
     });

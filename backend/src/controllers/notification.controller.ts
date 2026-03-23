@@ -6,7 +6,8 @@ export const getMyNotifications = async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) return res.status(401).json({ message: 'Not logged in', errorCode: 'auth/unauthorized' });
 
-    const dbUser = await prisma.user.findUnique({ where: { firebaseUid: user.uid } });
+    // 直接通过 userId 查找用户（JWT 中的 userId 就是数据库 id）
+    const dbUser = await prisma.user.findUnique({ where: { id: user.userId } });
     if (!dbUser) return res.status(404).json({ message: 'User not found', errorCode: 'auth/user-not-found' });
 
     const { page = '1', limit = '20' } = req.query;
@@ -15,6 +16,13 @@ export const getMyNotifications = async (req: Request, res: Response) => {
 
     const notifications = await prisma.notification.findMany({
       where: { userId: dbUser.id },
+      include: {
+    Claim: {
+      include: {
+        Food: { select: { title: true, location: true } }
+      }
+    }
+  },
       orderBy: { createdAt: 'desc' },
       skip,
       take,
@@ -36,7 +44,7 @@ export const getUnreadCount = async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) return res.status(401).json({ message: 'Not logged in', errorCode: 'auth/unauthorized' });
 
-    const dbUser = await prisma.user.findUnique({ where: { firebaseUid: user.uid } });
+    const dbUser = await prisma.user.findUnique({ where: { id: user.userId } });
     if (!dbUser) return res.status(404).json({ message: 'User not found', errorCode: 'auth/user-not-found' });
 
     const count = await prisma.notification.count({
@@ -53,7 +61,7 @@ export const markAsRead = async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) return res.status(401).json({ message: 'Not logged in', errorCode: 'auth/unauthorized' });
 
-    const dbUser = await prisma.user.findUnique({ where: { firebaseUid: user.uid } });
+    const dbUser = await prisma.user.findUnique({ where: { id: user.userId } });
     if (!dbUser) return res.status(404).json({ message: 'User not found', errorCode: 'auth/user-not-found' });
 
     const { notificationId, all } = req.body;
