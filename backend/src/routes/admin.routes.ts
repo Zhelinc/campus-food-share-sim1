@@ -10,9 +10,9 @@ import {
   deleteAnyFood
 } from '../controllers/admin.controller';
 
+import { getAllRatings, deleteRating } from '../controllers/admin.controller';
 const router = Router();
 
-// 所有管理员路由均需验证 token 和管理员身份
 router.use(verifyToken, verifyAdmin);
 
 // 用户管理
@@ -24,5 +24,8 @@ router.delete('/users/:userId', deleteUser);
 router.get('/foods', getAllFoods);
 router.put('/foods/:foodId', updateAnyFood);
 router.delete('/foods/:foodId', deleteAnyFood);
+
+router.get('/ratings', getAllRatings);
+router.delete('/ratings/:ratingId', deleteRating);
 
 export default router;

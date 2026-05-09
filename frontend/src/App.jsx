@@ -10,6 +10,7 @@ import MyAccount from './pages/MyAccount';
 import MyMessages from './pages/MyMessages';
 import ForgotPassword from './pages/ForgotPassword';
 import VerifyEmail from './pages/VerifyEmail';
+import AdminRatings from './pages/AdminRatings';
 function App() {
   return (
     <BrowserRouter>
@@ -27,6 +28,7 @@ function App() {
           <Route index element={<AdminFoods />} />          {/* /admin 默认显示食物管理 */}
           <Route path="foods" element={<AdminFoods />} />   {/* /admin/foods */}
           <Route path="users" element={<AdminUsers />} />   {/* /admin/users */}
+          <Route path="ratings" element={<AdminRatings />} />
         </Route>
       </Routes>
     </BrowserRouter>

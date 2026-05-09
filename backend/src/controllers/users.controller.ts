@@ -10,9 +10,8 @@ const JWT_EXPIRES_IN = '7d';
 const SALT_ROUNDS = 10;
 const ADMIN_INVITE_CODE = process.env.ADMIN_INVITE_CODE || '123456';
 
-/**
- * Register a new user
- */
+//Register 
+
 export const registerUser = async (req: Request, res: Response) => {
   try {
     const { email, password, confirmPassword, role = 'user', invitationCode } = req.body;
@@ -77,6 +76,8 @@ export const registerUser = async (req: Request, res: Response) => {
         password: hashedPassword,
         role,
         emailVerified: false,
+        avgRating: null,     
+        ratingCount: 0, 
         updatedAt: new Date(),
       },
     });
@@ -102,9 +103,8 @@ export const registerUser = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Verify user's email using token
- */
+//Verify user's email
+
 export const verifyEmail = async (req: Request, res: Response) => {
   try {
     const { token } = req.query;
@@ -151,9 +151,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Login user
- */
+//login
 export const loginUser = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -218,9 +216,7 @@ export const loginUser = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Get current user info (requires authentication)
- */
+//get user information
 export const getUserInfo = async (req: Request, res: Response) => {
   try {
     const user = req.user;
@@ -235,7 +231,7 @@ export const getUserInfo = async (req: Request, res: Response) => {
       where: { id: user.userId },
       include: {
         Food: { select: { title: true, status: true, location: true, weight: true, campus: true } },
-        Claim: { include: { Food: { select: { title: true, status: true, imageUrl: true } } } },
+        Claim: { include: { Food: true } },
       },
     });
 
@@ -265,9 +261,7 @@ export const getUserInfo = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Change password (authenticated)
- */
+//change password
 export const changePassword = async (req: Request, res: Response) => {
   try {
     const user = req.user;
@@ -337,9 +331,7 @@ export const changePassword = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Forgot password - send reset code via email and store in database
- */
+//Forgot password 
 export const forgotPassword = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
@@ -380,9 +372,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Reset password using code from database
- */
+//reset password
 export const resetPassword = async (req: Request, res: Response) => {
   try {
     const { email, code, newPassword, confirmNewPassword } = req.body;

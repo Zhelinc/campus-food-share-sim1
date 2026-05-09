@@ -3,9 +3,10 @@ import { Link, useLocation } from 'react-router-dom';
 import api from '../utils/axios';
 import { getUserInfo } from '../api/user';
 import { getFoodList, claimFood, updateFood, deleteFood, publishFood } from '../api/food';
+import HelpModal from '../components/HelpModal';
 
 const Home = () => {
-  const location = useLocation(); // 监听路由变化
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [foodList, setFoodList] = useState([]);
   const [filters, setFilters] = useState({
@@ -17,7 +18,7 @@ const Home = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentEditFood, setCurrentEditFood] = useState(null);
   const [editFoodData, setEditFoodData] = useState({
-    title: '', description: '', location: '', quality: '', category: ''
+    title: '', description: '', location: '', weight: '', category: ''
   });
 
   const [showPublishModal, setShowPublishModal] = useState(false);
@@ -31,6 +32,8 @@ const Home = () => {
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [selectedFood, setSelectedFood] = useState(null);
   const [pickupTime, setPickupTime] = useState('');
+
+const [showHelp, setShowHelp] = useState(false);
 
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -46,8 +49,7 @@ const Home = () => {
       }
       const userRes = await getUserInfo();
       setUser(userRes.user);
-      const foodRes = await getFoodList();
-      setFoodList(foodRes.foods || []);
+      await handleSearch(); // 加载食物列表
     } catch (err) {
       if (err.response?.status === 401) {
         localStorage.removeItem('token');
@@ -58,10 +60,30 @@ const Home = () => {
     }
   };
 
-  // 监听路由变化，每次进入首页重新加载数据
+  // 搜索函数（调用后端）
+  const handleSearch = async (searchFilters = filters) => {
+    try {
+      const params = {};
+      if (searchFilters.campus) params.campus = searchFilters.campus;
+      if (searchFilters.category) params.category = searchFilters.category;
+      if (searchFilters.keyword) params.keyword = searchFilters.keyword;
+      const foodRes = await getFoodList(params);
+      setFoodList(foodRes.foods || []);
+    } catch (err) {
+      alert('Failed to fetch food list: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  // 监听筛选条件变化，自动搜索
   useEffect(() => {
     if (location.pathname === '/') {
-      // 重置筛选条件（可选，避免残留）
+      handleSearch(filters);
+    }
+  }, [filters.campus, filters.category, filters.keyword]);
+
+  // 监听路由变化，重置筛选并重新加载
+  useEffect(() => {
+    if (location.pathname === '/') {
       setFilters({ campus: '', category: '', keyword: '' });
       loadData();
     }
@@ -88,19 +110,6 @@ const Home = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // 搜索函数
-  const handleSearch = async () => {
-    try {
-      const foodRes = await getFoodList({
-        ...filters,
-        campus: filters.campus || undefined
-      });
-      setFoodList(foodRes.foods || []);
-    } catch (err) {
-      alert('Failed to fetch food list: ' + (err.response?.data?.message || err.message));
-    }
-  };
 
   // 打开认领模态框
   const openClaimModal = (food) => {
@@ -131,7 +140,7 @@ const Home = () => {
       title: food.title,
       description: food.description || '',
       location: food.location,
-      quality: food.weight || '',  // 注意：字段已改为 weight
+      weight: food.weight,          // 修正字段名
       category: food.category
     });
     setShowEditModal(true);
@@ -185,20 +194,17 @@ const Home = () => {
     }
   };
 
-  // 前端筛选（仅用于展示，实际搜索已调用后端）
-  const filteredFoods = foodList.filter(food => {
-    return (
-      (filters.campus ? food.campus === filters.campus : true) &&
-      (filters.category ? food.category?.toLowerCase() === filters.category.toLowerCase() : true) &&
-      (filters.keyword ? food.title?.toLowerCase().includes(filters.keyword.toLowerCase()) : true)
-    );
-  });
-
-  // 点击左侧分类时立即筛选
+  // 点击分类时更新筛选（自动触发 useEffect 搜索）
   const handleCategoryClick = (cat) => {
-    setFilters({ ...filters, category: cat });
-    // 调用搜索，后端会处理 category 筛选（不区分大小写）
-    handleSearch();
+    setFilters(prev => ({
+      ...prev,
+      category: prev.category === cat ? '' : cat
+    }));
+  };
+
+  // 重置筛选（回到首页时使用）
+  const resetFilters = () => {
+    setFilters({ campus: '', category: '', keyword: '' });
   };
 
   return (
@@ -208,29 +214,26 @@ const Home = () => {
         backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
         padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'
       }}>
-        <div style={{ display: 'flex', gap: '20px' }}>
-          {/* Home 链接加粗高亮 */}
-          <Link
-            to="/"
-            style={{
-              color: '#ff6700',
-              textDecoration: 'none',
-              fontWeight: 'bold', // 加粗
-              cursor: 'pointer'
-            }}
-            onClick={() => {
-              // 重置筛选条件，loadData 会在 useEffect 中自动触发
-              setFilters({ campus: '', category: '', keyword: '' });
-              // 注意：不用手动调用 loadData，useEffect 监听了 location.pathname，会重新加载
-            }}
-          >
-            Home
-          </Link>
-          <span style={{ color: '#ff6700', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => setShowPublishModal(true)}>Publish Food</span>
-          <Link to="/my-publish" style={{ color: '#666', textDecoration: 'none' }}>My Publications</Link>
-          <Link to="/my-claim" style={{ color: '#666', textDecoration: 'none' }}>My Claims</Link>
-          {user?.role === 'admin' && <Link to="/admin" style={{ color: '#ff6700', textDecoration: 'none' }}>Admin Panel</Link>}
-        </div>
+<div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+  <Link to="/" style={{ color: '#ff6700', textDecoration: 'none', fontWeight: 'bold' }}>Home</Link>
+  <span style={{ color: '#ff6700', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => setShowPublishModal(true)}>Publish Food</span>
+  <Link to="/my-publish" style={{ color: '#666', textDecoration: 'none' }}>My Publications</Link>
+  <Link to="/my-claim" style={{ color: '#666', textDecoration: 'none' }}>My Claims</Link>
+  {user?.role === 'admin' && <Link to="/admin" style={{ color: '#ff6700', textDecoration: 'none' }}>Admin Panel</Link>}
+  <button
+    onClick={() => setShowHelp(true)}
+    style={{
+      background: 'none',
+      border: 'none',
+      color: '#666',
+      cursor: 'pointer',
+      fontSize: '16px',
+      fontWeight: 'bold'
+    }}
+  >
+    ❓ Help
+  </button>
+</div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={{ position: 'relative' }} ref={menuRef}>
@@ -277,7 +280,7 @@ const Home = () => {
             onChange={(e) => setFilters({ ...filters, keyword: e.target.value })}
             style={{ flex: 1, padding: '10px 15px', border: '1px solid #ff6700', borderRadius: '4px 0 0 4px', outline: 'none' }}
           />
-          <button onClick={handleSearch} style={{ backgroundColor: '#ff6700', color: 'white', border: 'none', padding: '0 20px', borderRadius: '0 4px 4px 0', cursor: 'pointer' }}>Search</button>
+          <button onClick={() => handleSearch(filters)} style={{ backgroundColor: '#ff6700', color: 'white', border: 'none', padding: '0 20px', borderRadius: '0 4px 4px 0', cursor: 'pointer' }}>Search</button>
         </div>
       </div>
 
@@ -287,10 +290,7 @@ const Home = () => {
           <h3 style={{ margin: '0 0 15px 0', fontSize: '16px' }}>Campus</h3>
           <select
             value={filters.campus}
-            onChange={(e) => {
-              setFilters({ ...filters, campus: e.target.value });
-              handleSearch(); // 立即搜索
-            }}
+            onChange={(e) => setFilters({ ...filters, campus: e.target.value })}
             style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
           >
             <option value="">All Campuses</option>
@@ -321,10 +321,10 @@ const Home = () => {
         </div>
 
         <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-          {filteredFoods.length === 0 ? (
+          {foodList.length === 0 ? (
             <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '50px', color: '#999' }}>No food available, go publish some!</div>
           ) : (
-            filteredFoods.map(food => (
+            foodList.map(food => (
               <div key={food.id} style={{ backgroundColor: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', borderRadius: '8px', overflow: 'hidden' }}>
                 <img src={food.imageUrl || '/images/blind-box.png'} alt={food.title} style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
                 <div style={{ padding: '15px' }}>
@@ -365,7 +365,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* 编辑模态框 */}
+      {/* 编辑模态框 - 保持不变，仅字段名已修正 */}
       {showEditModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -382,16 +382,12 @@ const Home = () => {
               <textarea value={editFoodData.description} onChange={e => setEditFoodData({ ...editFoodData, description: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', minHeight: '80px' }} />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label>Campus:</label>
-              <input type="text" value={editFoodData.campus} onChange={e => setEditFoodData({ ...editFoodData, campus: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} />
-            </div>
-            <div style={{ marginBottom: '15px' }}>
               <label>Location:</label>
               <input type="text" value={editFoodData.location} onChange={e => setEditFoodData({ ...editFoodData, location: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} />
             </div>
             <div style={{ marginBottom: '15px' }}>
               <label>Weight:</label>
-              <input type="text" value={editFoodData.quality} onChange={e => setEditFoodData({ ...editFoodData, quality: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} />
+              <input type="text" value={editFoodData.weight} onChange={e => setEditFoodData({ ...editFoodData, weight: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }} />
             </div>
             <div style={{ marginBottom: '15px' }}>
               <label>Category:</label>
@@ -405,7 +401,12 @@ const Home = () => {
         </div>
       )}
 
-      {/* 发布模态框 */}
+
+
+{showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+
+
+      {/* 发布模态框 - 保持不变 */}
       {showPublishModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -503,6 +504,11 @@ const Home = () => {
               </p>
             )}
             <p><strong>Pickup Location:</strong> {selectedFood.location}</p>
+            <p><strong>Publisher Reputation:</strong> {
+              selectedFood.User?.ratingCount >= 2
+                ? `${selectedFood.User.avgRating?.toFixed(1)} / 5`
+                : 'Insufficient ratings (need ≥2)'
+            }</p>
             <div style={{ margin: '15px 0' }}>
               <label>Preferred Pickup Time (ISO format):</label>
               <input

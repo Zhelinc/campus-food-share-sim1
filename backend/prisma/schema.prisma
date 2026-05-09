@@ -16,10 +16,14 @@ model User {
   role        String   @default("user")
   emailVerified Boolean @default(false)
 
-  // 关系字段（大写，单数）
   Claim       Claim[]
   Food        Food[]
   Notification Notification[]
+
+  avgRating        Float?   @default(0)
+  ratingCount   Int      @default(0)   
+  ratingsReceived  Rating[] @relation("ReceivedRatings")
+  ratingsGiven     Rating[] @relation("GivenRatings")
 }
 
 model Food {
@@ -55,6 +59,7 @@ model Claim {
   Food       Food    @relation(fields: [foodId], references: [id])
   // 反向关系：一个认领可以有多条通知
   Notification Notification[]
+    ratings    Rating[] 
 }
 
 enum ClaimStatus {
@@ -86,6 +91,22 @@ model PasswordReset {
   expiresAt DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   @@map("password_resets")
+}
+
+model Rating {
+  id        String   @id @default(cuid())
+  score     Int
+  comment   String?
+  createdAt DateTime @default(now())
+  claimId   String
+  raterId   String
+  ratedId   String
+  claim     Claim    @relation(fields: [claimId], references: [id])
+  rater     User     @relation("GivenRatings", fields: [raterId], references: [id])
+  rated     User     @relation("ReceivedRatings", fields: [ratedId], references: [id])
+
+  @@unique([claimId, raterId])
+  @@index([ratedId])
+  @@index([claimId])
 }

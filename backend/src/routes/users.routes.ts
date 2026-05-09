@@ -5,8 +5,8 @@ import {
   loginUser, 
   getUserInfo, 
   changePassword,
-  forgotPassword,  // 新增
-  resetPassword    // 新增
+  forgotPassword,  
+  resetPassword    
 } from '../controllers/users.controller';
 import { verifyToken } from '../middleware/auth.middleware';
 
@@ -20,13 +20,13 @@ router.post('/register', registerUser);
 // 登录
 router.post('/login', loginUser);
 
-// 获取用户信息（需Token）
+// 获取用户信息
 router.get('/info', verifyToken, getUserInfo);
 
-// 修改密码（需Token）
+// 修改密码
 router.post('/change-password', verifyToken, changePassword);
 
-// 忘记密码（发送验证码）
+// 忘记密码
 router.post('/forgot-password', forgotPassword);
 
 // 重置密码

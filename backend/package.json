@@ -10,11 +10,15 @@
     "start": "node scripts/init-db.js && node dist/index.js",
     "vercel-build": "node scripts/init-db.js && npm run build"
   },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@faker-js/faker": "^10.4.0",
     "@prisma/client": "^5.16.1",
     "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
@@ -26,12 +30,14 @@
     "@types/node": "^25.2.0",
     "@types/nodemailer": "^7.0.11",
     "@types/pg": "^8.16.0",
+    "@vercel/node": "^5.7.15",
     "nodemon": "^3.1.11",
     "prisma": "^5.16.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@types/node-cron": "^3.0.11",
     "@vercel/blob": "^2.3.1",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
@@ -42,6 +48,7 @@
     "firebase-admin": "^13.6.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
     "nodemailer": "^8.0.1",
     "pg": "^8.18.0"
   }

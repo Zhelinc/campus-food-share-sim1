@@ -1,6 +1,6 @@
 import api from '../utils/axios';
 
-// 1. 获取食物列表（支持筛选）
+// 1. 获取食物列表\
 export const getFoodList = (filters = {}) => {
   return api.get('/api/food/list', { params: filters });
 };

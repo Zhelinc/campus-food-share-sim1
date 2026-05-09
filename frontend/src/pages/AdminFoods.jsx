@@ -130,7 +130,7 @@ const AdminFoods = () => {
             <tr key={f.id}>
               <td style={{ padding: '10px', border: '1px solid #ddd' }}>{f.id}</td>
               <td style={{ padding: '10px', border: '1px solid #ddd' }}>{f.title}</td>
-              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{f.publisher?.email}</td>
+              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{f.User?.email}</td>
               <td style={{ padding: '10px', border: '1px solid #ddd' }}>{f.status}</td>
               <td style={{ padding: '10px', border: '1px solid #ddd' }}>
                 <button onClick={() => handleEdit(f)}>Edit</button>

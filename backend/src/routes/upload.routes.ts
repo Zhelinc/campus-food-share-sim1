@@ -4,7 +4,6 @@ import { Request } from 'express';
 import { verifyToken } from '../middleware/auth.middleware';
 import { uploadImage } from '../controllers/upload.controller';
 
-// 使用内存存储（关键修改）
 const storage = multer.memoryStorage();
 
 const fileFilter = (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {

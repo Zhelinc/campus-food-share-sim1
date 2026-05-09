@@ -8,16 +8,15 @@ export const uploadImage = async (req: Request, res: Response) => {
     }
 
     const file = req.file;
-    // 生成唯一文件名，避免覆盖（可使用时间戳+原始名）
     const fileName = `${Date.now()}-${file.originalname}`;
 
-    // 上传到 Vercel Blob
+    // 上传
     const blob = await put(fileName, file.buffer, {
-      access: 'public',           // 公开访问
-      contentType: file.mimetype, // 保持 MIME 类型
+      access: 'public',           
+      contentType: file.mimetype, 
     });
 
-    // 返回文件的公网 URL
+    // 返回 URL
     return res.status(200).json({
       message: 'Upload successful',
       url: blob.url,

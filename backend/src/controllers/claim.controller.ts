@@ -2,11 +2,6 @@ import { Request, Response } from 'express';
 import prisma from '../utils/db';
 import { generateId } from '../utils/idGenerator';
 
-/**
- * 发布者回应认领请求
- * action: 'accept' | 'reject_with_counter'
- * if action = 'reject_with_counter', must provide counterPickupTime
- */
 export const respondToClaim = async (req: Request, res: Response) => {
   try {
     const user = req.user;
@@ -30,7 +25,7 @@ export const respondToClaim = async (req: Request, res: Response) => {
     }
 
     if (action === 'accept') {
-      // 接受认领
+      // accept
       await prisma.claim.update({
         where: { id: claimId },
         data: { status: 'ACCEPTED', updatedAt: new Date() }
@@ -51,7 +46,7 @@ export const respondToClaim = async (req: Request, res: Response) => {
       });
       return res.status(200).json({ message: 'Claim accepted' });
     } else {
-      // 拒绝并提议新时间
+      // new time
       const newTime = new Date(counterPickupTime);
       await prisma.claim.update({
         where: { id: claimId },
@@ -61,7 +56,7 @@ export const respondToClaim = async (req: Request, res: Response) => {
           updatedAt: new Date(),
         }
       });
-      // 食物保持 CLAIMED 状态，等待申领者回应
+      // w r
       await prisma.notification.create({
         data: {
           id: generateId(),
@@ -80,10 +75,7 @@ export const respondToClaim = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * 申领者对反提议的回应
- * action: 'accept' | 'reject'
- */
+
 export const respondToCounter = async (req: Request, res: Response) => {
   try {
     const user = req.user;
@@ -107,12 +99,11 @@ export const respondToCounter = async (req: Request, res: Response) => {
     }
 
     if (action === 'accept') {
-      // 接受反提议，完成认领
       await prisma.claim.update({
         where: { id: claimId },
         data: {
           status: 'ACCEPTED',
-          pickupTime: claim.counterPickupTime, // 采用新时间
+          pickupTime: claim.counterPickupTime, 
           counterPickupTime: null,
           updatedAt: new Date(),
         }
@@ -133,7 +124,6 @@ export const respondToCounter = async (req: Request, res: Response) => {
       });
       return res.status(200).json({ message: 'Counter offer accepted' });
     } else {
-      // 拒绝反提议，撤销认领，恢复食物为可用状态
       await prisma.claim.delete({ where: { id: claimId } });
       await prisma.food.update({
         where: { id: claim.foodId },

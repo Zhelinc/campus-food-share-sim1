@@ -37,6 +37,16 @@ const AdminLayout = () => {
               User Management
             </Link>
           </li>
+          {/* 新增评语管理 */}
+          <li style={{ marginBottom: '10px' }}>
+            <Link
+              to="/admin/ratings"
+              style={{ color: activeMenu === 'ratings' ? '#ff6700' : '#ccc', textDecoration: 'none' }}
+              onClick={() => setActiveMenu('ratings')}
+            >
+              Rating Management
+            </Link>
+          </li>
         </ul>
         <button
           onClick={() => {

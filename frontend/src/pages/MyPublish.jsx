@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getUserInfo } from '../api/user';
 import { getMyPublishedFoods, updateFood, deleteFood } from '../api/food';
+import RatingModal from '../components/RatingModal';
+import RatingsViewer from '../components/RatingsViewer';
 
 const MyPublish = () => {
   const [user, setUser] = useState(null);
@@ -15,6 +17,9 @@ const MyPublish = () => {
     weight: '',
     category: ''
   });
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [showReviewsModal, setShowReviewsModal] = useState(false);
+  const [currentClaimId, setCurrentClaimId] = useState(null);
 
   useEffect(() => {
     const initData = async () => {
@@ -24,10 +29,8 @@ const MyPublish = () => {
           window.location.href = '/login';
           return;
         }
-
         const userRes = await getUserInfo();
         setUser(userRes.user);
-
         const foodRes = await getMyPublishedFoods();
         setMyFoods(foodRes.foods || []);
       } catch (err) {
@@ -35,8 +38,7 @@ const MyPublish = () => {
           localStorage.removeItem('token');
           window.location.href = '/login';
         } else {
-          alert('Failed to load your publications: ' + (err.response?.data?.message || err.message || 'Please try again later'));
-          console.error('Failed to load publications:', err);
+          alert('Failed to load your publications: ' + (err.response?.data?.message || err.message));
         }
       }
     };
@@ -81,13 +83,28 @@ const MyPublish = () => {
     }
   };
 
+  const openRatingModal = (claimId) => {
+    setCurrentClaimId(claimId);
+    setShowRatingModal(true);
+  };
+
+  const openReviewsModal = (claimId) => {
+    setCurrentClaimId(claimId);
+    setShowReviewsModal(true);
+  };
+
+  const refreshList = async () => {
+    const foodRes = await getMyPublishedFoods();
+    setMyFoods(foodRes.foods || []);
+  };
+
   return (
     <div style={{ width: '1200px', margin: '0 auto', padding: '20px' }}>
       <div style={{ marginBottom: '20px' }}>
         <Link to="/" style={{ color: '#ff6700', textDecoration: 'none' }}>← Back to Home</Link>
       </div>
       <h2 style={{ margin: '0 0 20px 0', color: '#333' }}>My Publications</h2>
-      
+
       {myFoods.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '50px', color: '#999' }}>
           You haven't published any food yet. Go to the homepage and publish some!
@@ -95,17 +112,17 @@ const MyPublish = () => {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
           {myFoods.map((food) => (
-            <div 
-              key={food.id} 
-              style={{ 
-                backgroundColor: 'white', 
+            <div
+              key={food.id}
+              style={{
+                backgroundColor: 'white',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 borderRadius: '8px',
                 overflow: 'hidden'
               }}
             >
-              <img 
-                src={food.imageUrl || '/images/blind-box.png'} 
+              <img
+                src={food.imageUrl || '/images/blind-box.png'}
                 alt={food.title}
                 style={{ width: '100%', height: '180px', objectFit: 'cover' }}
               />
@@ -113,48 +130,78 @@ const MyPublish = () => {
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '18px' }}>{food.title}</h4>
                 <p style={{ margin: '5px 0', color: '#666' }}>Description: {food.description || 'None'}</p>
                 <p style={{ margin: '5px 0', color: '#666' }}>Location: {food.location}</p>
-                <p style={{ margin: '5px 0', color: '#666' }}>weight: {food.weight}</p>
+                <p style={{ margin: '5px 0', color: '#666' }}>Weight: {food.weight}</p>
                 <p style={{ margin: '5px 0', color: '#666' }}>Category: {food.category}</p>
-                <p style={{ 
-                  margin: '5px 0', 
-                  color: food.status === 'AVAILABLE' ? '#4caf50' : '#f44336' 
+                <p style={{
+                  margin: '5px 0',
+                  color: food.status === 'AVAILABLE' ? '#4caf50' : '#f44336'
                 }}>
-                  Status: {food.status === 'AVAILABLE' ? 'Available' : 'Claimed'}
+                  Status: {food.status === 'AVAILABLE' ? 'Available' : 'Claimed / Completed'}
                 </p>
-                {food.claim && (
-                  <p style={{ margin: '5px 0', color: '#666' }}>
-                    Claim Status: {food.claim.status === 'PENDING' ? 'Pending' : 'Confirmed'}
-                  </p>
-                )}
                 <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                  <button
-                    onClick={() => openEditModal(food)}
-                    style={{ 
-                      flex: 1, 
-                      padding: '8px',
-                      backgroundColor: '#4299e1',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(food.id)}
-                    style={{ 
-                      flex: 1, 
-                      padding: '8px',
-                      backgroundColor: '#f44336',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Delete
-                  </button>
+                  {food.completedClaimId ? (
+                    <>
+                      <button
+                        onClick={() => openRatingModal(food.completedClaimId)}
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          backgroundColor: '#4caf50',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Rate
+                      </button>
+                      <button
+                        onClick={() => openReviewsModal(food.completedClaimId)}
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          backgroundColor: '#4299e1',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Reviews
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => openEditModal(food)}
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          backgroundColor: '#4299e1',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(food.id)}
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          backgroundColor: '#f44336',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -162,21 +209,22 @@ const MyPublish = () => {
         </div>
       )}
 
+      {/* Edit Modal */}
       {showEditModal && (
-        <div style={{ 
-          position: 'fixed', 
-          top: 0, 
-          left: 0, 
-          right: 0, 
-          bottom: 0, 
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           backgroundColor: 'rgba(0,0,0,0.5)',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center'
         }}>
-          <div style={{ 
-            backgroundColor: 'white', 
-            padding: '20px', 
+          <div style={{
+            backgroundColor: 'white',
+            padding: '20px',
             borderRadius: '8px',
             width: '500px'
           }}>
@@ -208,7 +256,7 @@ const MyPublish = () => {
               />
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px' }}>weight:</label>
+              <label style={{ display: 'block', marginBottom: '5px' }}>Weight:</label>
               <input
                 type="text"
                 value={editFoodData.weight}
@@ -226,34 +274,28 @@ const MyPublish = () => {
               />
             </div>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setShowEditModal(false)}
-                style={{ 
-                  padding: '8px 16px',
-                  backgroundColor: '#ddd',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitEdit}
-                style={{ 
-                  padding: '8px 16px',
-                  backgroundColor: '#4299e1',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Save
-              </button>
+              <button onClick={() => setShowEditModal(false)} style={{ padding: '8px 16px', backgroundColor: '#ddd', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={submitEdit} style={{ padding: '8px 16px', backgroundColor: '#4299e1', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Save</button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Rating Modal */}
+      {showRatingModal && (
+        <RatingModal
+          claimId={currentClaimId}
+          onClose={() => setShowRatingModal(false)}
+          onSuccess={refreshList}
+        />
+      )}
+
+      {/* Reviews Viewer Modal */}
+      {showReviewsModal && (
+        <RatingsViewer
+          claimId={currentClaimId}
+          onClose={() => setShowReviewsModal(false)}
+        />
       )}
     </div>
   );

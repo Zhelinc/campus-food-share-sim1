@@ -6,7 +6,7 @@ export const getMyNotifications = async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) return res.status(401).json({ message: 'Not logged in', errorCode: 'auth/unauthorized' });
 
-    // 直接通过 userId 查找用户（JWT 中的 userId 就是数据库 id）
+   
     const dbUser = await prisma.user.findUnique({ where: { id: user.userId } });
     if (!dbUser) return res.status(404).json({ message: 'User not found', errorCode: 'auth/user-not-found' });
 

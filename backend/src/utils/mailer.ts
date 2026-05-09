@@ -10,11 +10,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-/**
- * Send email verification link to the user
- * @param to recipient email address
- * @param token JWT token for email verification
- */
+
 export const sendVerificationEmail = async (to: string, token: string) => {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;

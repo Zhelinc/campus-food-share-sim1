@@ -16,3 +16,6 @@ frontend/.env
 .DS_Store
 
 backend/src/config/*.json
+
+nwapp/
+desktop/

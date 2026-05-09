@@ -1,9 +1,7 @@
-// backend/src/controllers/admin.controller.ts
 import { Request, Response } from 'express';
 import prisma from '../utils/db';
 
-// ================== 用户管理 ==================
-
+// user
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await prisma.user.findMany({
@@ -25,14 +23,14 @@ export const getAllUsers = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
-    const id = userId as string; // 类型断言
+    const id = userId as string; 
     const { email } = req.body;
 
-    // 检查邮箱是否已被其他用户使用
+    // check email
     const existing = await prisma.user.findFirst({
       where: { 
         email, 
-        NOT: { id } // 现在 id 是 string 类型
+        NOT: { id } 
       }
     });
     if (existing) {
@@ -44,7 +42,6 @@ export const updateUser = async (req: Request, res: Response) => {
       data: { email, updatedAt: new Date() }
     });
 
-    // 移除密码字段后返回
     const { password, ...userWithoutPassword } = updatedUser;
     return res.status(200).json({ message: 'User updated successfully', user: userWithoutPassword });
   } catch (error: any) {
@@ -57,20 +54,18 @@ export const deleteUser = async (req: Request, res: Response) => {
     const { userId } = req.params;
     const id = userId as string;
 
-    // 删除该用户的认领记录
     await prisma.claim.deleteMany({ where: { claimantId: id } });
-    // 获取该用户发布的所有食物 ID
+    // get foodid about the user
     const userFoods = await prisma.food.findMany({
       where: { publisherId: id },
       select: { id: true }
     });
-    // 删除这些食物的认领记录
+    // 删除食物的认领记录
     for (const food of userFoods) {
       await prisma.claim.deleteMany({ where: { foodId: food.id } });
     }
     // 删除该用户发布的食物
     await prisma.food.deleteMany({ where: { publisherId: id } });
-    // 最后删除用户
     await prisma.user.delete({ where: { id } });
 
     return res.status(200).json({ message: 'User deleted successfully' });
@@ -79,7 +74,7 @@ export const deleteUser = async (req: Request, res: Response) => {
   }
 };
 
-// ================== 食物管理 ==================
+// food
 
 export const getAllFoods = async (req: Request, res: Response) => {
   try {
@@ -120,5 +115,63 @@ export const deleteAnyFood = async (req: Request, res: Response) => {
     return res.status(200).json({ message: 'Food deleted successfully' });
   } catch (error: any) {
     return res.status(500).json({ message: 'Failed to delete food', error: error.message });
+  }
+};
+
+// get rate
+export const getAllRatings = async (req: Request, res: Response) => {
+  try {
+    const ratings = await prisma.rating.findMany({
+      include: {
+        rater: { select: { id: true, email: true } },
+        rated: { select: { id: true, email: true } },
+        claim: { include: { Food: { select: { title: true } } } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    return res.status(200).json({ ratings });
+  } catch (error: any) {
+    return res.status(500).json({ message: 'Failed to get ratings', error: error.message });
+  }
+};
+
+// d rate
+export const deleteRating = async (req: Request, res: Response) => {
+  try {
+    const { ratingId } = req.params;
+    // 确保 ratingId 是字符串，不是数组
+    if (!ratingId || Array.isArray(ratingId)) {
+      return res.status(400).json({ message: 'Invalid rating ID' });
+    }
+
+    // aa rate
+    const rating = await prisma.rating.findUnique({
+      where: { id: ratingId },
+      include: { rated: true }
+    });
+    if (!rating) {
+      return res.status(404).json({ message: 'Rating not found' });
+    }
+
+    await prisma.rating.delete({ where: { id: ratingId } });
+
+    // rec r
+    const agg = await prisma.rating.aggregate({
+      where: { ratedId: rating.ratedId },
+      _avg: { score: true },
+      _count: { score: true }
+    });
+    await prisma.user.update({
+      where: { id: rating.ratedId },
+      data: {
+        avgRating: agg._avg.score ?? null,
+        ratingCount: agg._count.score
+      }
+    });
+
+    return res.status(200).json({ message: 'Rating deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete rating error:', error);
+    return res.status(500).json({ message: 'Failed to delete rating', error: error.message });
   }
 };
